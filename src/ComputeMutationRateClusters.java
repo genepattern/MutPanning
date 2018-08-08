@@ -49,9 +49,9 @@ public class ComputeMutationRateClusters {
 	public static void main(String[] args){
 		
 		file_out=args[0]+"MutationRateClusters/Lambda_Chr";
-		file_seq=args[1]+”ASAnnotationHg19/ASAnnotation_chr";
+		file_seq=args[1]+"ASAnnotationHg19/ASAnnotation_chr";
 		file_signatures=args[0]+"ClusteringComplete/ClusteringComplete_Affinity.txt";
-		file_reference=args[1]+”FileReferenceCount.txt";
+		file_reference=args[1]+"FileReferenceCount.txt";
 		
 		
 		try{

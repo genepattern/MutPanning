@@ -74,7 +74,7 @@ public class Filter_Step1 {
 	public static void main(String[] args){
 		
 		files_sign=new String[]{args[0]+"SignificanceRaw/Significance",args[0]+"SignificanceRaw/SignificanceUniform"};
-		file_genes=args[2]+”Exons_Hg19.txt";
+		file_genes=args[2]+"Exons_Hg19.txt";
 		file_out=new String[]{args[0]+"PostSignFilter/Queries/Query",args[0]+"PostSignFilter/Queries/QueryUniform"};
 		file_count=args[0]+"EntityCounts/EntityCounts";
 		

@@ -75,7 +75,7 @@ public class ReformatCBASE{
 		
 		file_count=args[0]+"CBASE/CountsRaw/Count";
 		file_maf=args[1];
-		file_genes=args[3]+”Exons_Hg19.txt";
+		file_genes=args[3]+"Exons_Hg19.txt";
 		file_samples=args[2];
 		
 		file_out1=args[0]+"CBASE/Counts/Count";

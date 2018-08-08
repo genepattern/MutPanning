@@ -90,7 +90,7 @@ public class ClusteringPanCancer {
 		file_cosmic=args[0]+"AffinityCounts/CosmicCount.txt";
 		
 		file_affinity=args[0]+"AffinityCounts/AffinityCount.txt";
-		file_reference=args[5]+”FileReferenceCount.txt";
+		file_reference=args[5]+"FileReferenceCount.txt";
 		
 		file_out_cosmic=args[0]+"ClusteringComplete/ClusteringComplete_Cosmic.txt";
 		file_out_affinity=args[0]+"ClusteringComplete/ClusteringComplete_Affinity.txt";

@@ -64,7 +64,7 @@ public class Filter_Step3 {
 			
 			//Read list of Approved Symbols. This list contains the HUGO symbol of each genes together with
 			//all its aliases. Using this list all gene symbols are transformed to the HUGO nomenclature.
-			FileInputStream in=new FileInputStream(args[2]+”SignificanceFilter/ApprovedSymbols.txt");
+			FileInputStream in=new FileInputStream(args[2]+"SignificanceFilter/ApprovedSymbols.txt");
 			DataInputStream inn=new DataInputStream(in);
 			BufferedReader input= new BufferedReader(new InputStreamReader(inn));
 			input.readLine();
@@ -91,7 +91,7 @@ public class Filter_Step3 {
 			input.close();
 			
 			//black listed genes are genes that produces false positive results in our pan cancer analysis
-			in=new FileInputStream(args[2]+”SignificanceFilter/BlackList.txt");
+			in=new FileInputStream(args[2]+"SignificanceFilter/BlackList.txt");
 			inn=new DataInputStream(in);
 			input= new BufferedReader(new InputStreamReader(inn));
 			while((s=input.readLine())!=null){
@@ -100,7 +100,7 @@ public class Filter_Step3 {
 			input.close();
 			
 			//read the cancer cenus as genes that should appear in the final report
-			in=new FileInputStream(args[2]+”SignificanceFilter/census.csv");
+			in=new FileInputStream(args[2]+"SignificanceFilter/census.csv");
 			inn=new DataInputStream(in);
 			input= new BufferedReader(new InputStreamReader(inn));
 			input.readLine();

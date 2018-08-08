@@ -83,13 +83,13 @@ public class ComputeSignificance {
 	public static void main(String[] args){
 		try{
 			entity=args[1];
-			file_genes=args[2]+”Exons_Hg19.txt";
+			file_genes=args[2]+"Exons_Hg19.txt";
 			file_count=args[0]+"EntityCounts/EntityCounts";
 			file_cbase=args[0]+"CBASE/Distributions/";
 			file_destructive=args[0]+"CountDestructive/";
 			file_gene_count=args[0]+"CBASE/Counts/Count";
 			file_count_genes=args[0]+"CBASE/CountsChrwise/Count";
-			file_amino=args[2]+”ASAnnotationHg19/ASAnnotation_chr";
+			file_amino=args[2]+"ASAnnotationHg19/ASAnnotation_chr";
 			file_out=args[0]+"SignificanceRaw/Significance";
 			
 			if(!new File(args[0]+"SignificanceRaw/").exists()){

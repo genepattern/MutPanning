@@ -46,8 +46,8 @@ public class AlignHG19 {
 	
 	public static void main(String[] args){
 		
-		file_peptide=args[4]+”ASAnnotationHg19/ASAnnotation_chr";
-		file_coverage=args[4]+”CoverageExome_TCGA/Coverage_chr";
+		file_peptide=args[4]+"ASAnnotationHg19/ASAnnotation_chr";
+		file_coverage=args[4]+"CoverageExome_TCGA/Coverage_chr";
 		file_samples=args[2];
 		file_maf=args[1];
 		file_out=args[0]+"AlignHg19/AlignHg19Chr";

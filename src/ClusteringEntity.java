@@ -70,7 +70,7 @@ public class ClusteringEntity {
 		file_type=args[0]+"AffinityCounts/TypeCount.txt";//"C:\\Users\\Administrator/Dropbox/AffinityCounts/CosmicCount.txt";
 		file_affinity=args[0]+"AffinityCounts/AffinityCount.txt";//"C:\\Users\\Administrator/Dropbox/AffinityCounts/AffinityCount.txt";
 		file_samples=args[1];
-		file_reference=args[3]+”FileReferenceCount.txt";
+		file_reference=args[3]+"FileReferenceCount.txt";
 		file_out=args[0]+"Clustering/";
 		
 		if(!new File(file_out).exists()){

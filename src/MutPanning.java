@@ -103,14 +103,14 @@ public class MutPanning {
 			args[8]=args[0]+"src/ComputeDistribution.py";
 		}
 		if(args[9].equals("")){
-			args[9]=args[0]+”Hg19/";
+			args[9]=args[0]+"Hg19/";
 		}
 		
 		System.out.println("Launching MutPanning with root file "+arguments[0]);
 		
 		
 		System.out.println("Aligning Maf to Hg19 - Step 1");
-		AlignHG19.main(new String[]{args[0],args[1],args[2],”0”,args[9]});
+		AlignHG19.main(new String[]{args[0],args[1],args[2],"0",args[9]});
 		System.out.println("Aligning Maf to Hg19 - Step 2");
 		AlignHG19.main(new String[]{args[0],args[1],args[2],"1",args[9]});
 		System.out.println("Aligning Maf to Hg19 - Step 3");
@@ -185,7 +185,7 @@ public class MutPanning {
 		
 		for (int i=0;i<files_query.length;i++){			
 			output_files_blat[i]=args[0]+"PostSignFilter/OutputsBLAT/Output"+files_query[i].getName().substring(5,files_query[i].getName().length()-3)+".txt";
-			command_blat[i]="cd "+args[9]+”SignificanceFilter/"+" && ./blat hg19.2bit "+files_query[i].getAbsolutePath()+" -ooc=11.ooc -out=pslx "+output_files_blat[i];//+" && cd "+args[0];
+			command_blat[i]="cd "+args[9]+"SignificanceFilter/"+" && ./blat hg19.2bit "+files_query[i].getAbsolutePath()+" -ooc=11.ooc -out=pslx "+output_files_blat[i];//+" && cd "+args[0];
 			
 		}
 		execute(command_blat,output_files_blat);//,Integer.parseInt(args[5])

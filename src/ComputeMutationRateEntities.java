@@ -96,7 +96,7 @@ public class ComputeMutationRateEntities {
 		
 		file_samples=args[1];
 		file_align=args[0]+"AlignHg19/AlignHg19Chr";
-		file_genes=args[2]+”Exons_Hg19.txt";
+		file_genes=args[2]+"Exons_Hg19.txt";
 		file_type=args[0]+"AffinityCounts/TypeCount.txt";
 		file_clusters=args[0]+"ClusteringComplete/ClusteringComplete_Samples.txt";
 		file_lambda=args[0]+"MutationRateClusters/Lambda_Chr";

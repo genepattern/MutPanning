@@ -97,7 +97,7 @@ public class CountDestructiveMutations {
 		file_align=args[0]+"AlignHg19/AlignHg19Chr";
 		file_maf=args[1];
 		file_entities=args[2];
-		file_genes=args[3]+”Exons_Hg19.txt";
+		file_genes=args[3]+"Exons_Hg19.txt";
 		file_out=args[0]+"CountDestructive/";
 		
 		if(!new File(file_out).exists()){

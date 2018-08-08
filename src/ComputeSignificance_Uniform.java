@@ -96,13 +96,13 @@ public class ComputeSignificance_Uniform {
 		
 		
 		entity=args[1];
-		file_genes=args[2]+”Exons_Hg19.txt";
+		file_genes=args[2]+"Exons_Hg19.txt";
 		file_count=args[0]+"EntityCounts/EntityCounts";
 		file_count_genes=args[0]+"CBASE/CountsChrwise/Count";
 		
 		file_out=args[0]+"SignificanceRaw/SignificanceUniform";
 		file_destructive=args[0]+"CountDestructive/";
-		file_amino=args[2]+”ASAnnotationHg19/ASAnnotation_chr";
+		file_amino=args[2]+"ASAnnotationHg19/ASAnnotation_chr";
 		
 		if(!new File(args[0]+"SignificanceRaw/").exists()){
 			new File(args[0]+"SignificanceRaw/").mkdir();
