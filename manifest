@@ -4,7 +4,7 @@ JVMLevel=
 LSID=urn\:lsid\:broad.mit.edu\:cancer.software.genepattern.module.analysis\:00380\:0.1
 author=Ted Liefeld, UCSD School of Medicine.
 categories=Tutorial
-commandLine=java -Xmx2G -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning /mutpanning/ <maf.file>  <sample.annotation.file>  <min.samples.per.cluster>  <min.mutations.per.cluster> 24  <min.cbase.samples> <min.cbase.mutations>  /mutpanning/src/ComputeDistribution.py /mutpanning/Hg19/
+commandLine=java -Xmx2G -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning /mutpanning/ <maf.file>  <sample.annotation.file>  <min.samples.per.cluster>  <min.mutations.per.cluster> <job.cpuCount>  <min.cbase.samples> <min.cbase.mutations>  /mutpanning/src/ComputeDistribution.py /mutpanning/Hg19/
 
 cpuType=any
 description=MutPanning description goes here
