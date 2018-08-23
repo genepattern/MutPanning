@@ -5,9 +5,10 @@ LSID=urn\:lsid\:broad.mit.edu\:cancer.software.genepattern.module.analysis\:0038
 author=Ted Liefeld, UCSD School of Medicine.
 categories=Tutorial
 
-commandLine=/mutpanning/run-mutpanning-module.sh <env.MUTPANNING_MAX_SAMPLES> -Xmx70G <maf.file>  <sample.annotation.file>  <min.samples.per.cluster>  <min.mutations.per.cluster> <job.cpuCount>  <min.cbase.samples> <min.cbase.mutations>  /mutpanning/src/ComputeDistribution.py /mutpanning/Hg19/
+commandLine=/mutpanning/run-mutpanning-module.sh <env.MUTPANNING_MAX_SAMPLES> -Xmx60G <maf.file>  <sample.annotation.file>  <min.samples.per.cluster>  <min.mutations.per.cluster> 32  <min.cbase.samples> <min.cbase.mutations>  /mutpanning/src/ComputeDistribution.py  /mutpanning/Hg19/
 
 cpuType=any
+
 description=MutPanning description goes here
 fileFormat=maf
 language=any

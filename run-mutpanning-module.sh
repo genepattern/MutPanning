@@ -15,7 +15,7 @@ fi
 MEM=$1
 shift
 
-echo "RUNNING:   java $JAVA_OPTS -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@"
+echo "RUNNING:   java $MEM -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@"
 
 java $MEM -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@
 
