@@ -14,10 +14,12 @@ fi
 
 MEM=$1
 shift
+python /mutpanning/adjustmemory.py $MEM > .mem.txt
+MEM=$(cat ./.mem.txt)
 
-echo "RUNNING:   java $MEM -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@"
+echo "RUNNING:   java -Xmx$MEM -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@"
 
-java $MEM -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@
+java -Xmx$MEM -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning $PWD $@
 
 #  java -Xmx55G -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning /opt/gpbeta/gp_home/jobResults/<job_id> <maf.file>  <sample.annotation.file>  <min.samples.per.cluster>  <min.mutations.per.cluster> <job.cpuCount>  <min.cbase.samples> <min.cbase.mutations>  /mutpanning/src/ComputeDistribution.py /mutpanning/Hg19/
 
