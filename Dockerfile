@@ -18,7 +18,8 @@ RUN javac -cp bin/commons-math3-3.6.1.jar:bin/jdistlib-0.4.5-bin.jar src/Affinit
 # 
 # Note the Hg19.tar.gz file is not in github but is available at https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.tar.gz
 #
-RUN tar -xvzf Hg19.tar.gz && \
+RUN wget  https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.tar.gz && \
+    tar -xvzf Hg19.tar.gz && \
     rm Hg19.tar.gz && \
     chmod -R a+rwx /mutpanning/Hg19
 
