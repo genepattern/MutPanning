@@ -8,7 +8,11 @@ RUN apt-get update && \
 	apt-get upgrade -y && \
 	apt-get install -y wget openjdk-8-jdk && \
 	apt-get install -y python-pip python2.7 python-dev && \
-	pip install scipy==1.1.0 mpmath==1.0.0 
+	pip install scipy==1.1.0 mpmath==1.0.0 && \
+	wget  https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.tar.gz && \
+    	tar -xvzf Hg19.tar.gz && \
+    	rm Hg19.tar.gz && \
+    	chmod -R a+rwx /mutpanning/Hg19
 	
 COPY . /mutpanning
 
@@ -18,10 +22,6 @@ RUN javac -cp bin/commons-math3-3.6.1.jar:bin/jdistlib-0.4.5-bin.jar src/Affinit
 # 
 # Note the Hg19.tar.gz file is not in github but is available at https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.tar.gz
 #
-RUN wget  https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.tar.gz && \
-    tar -xvzf Hg19.tar.gz && \
-    rm Hg19.tar.gz && \
-    chmod -R a+rwx /mutpanning/Hg19
 
 #CMD ["bash /mutpanning/launch-mutpanning.sh"]
 

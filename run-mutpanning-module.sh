@@ -29,6 +29,6 @@ tar -czvf Results.tar.gz SignificanceFiltered/
 
 # remove intermediate files
 #tar -czvf IntermediateFiles.tar.gz MutationRateClusters EntityCounts PostSignFilter CBASE AlignHg19 AffinityCounts ClusteringComplete CountDestructive Clustering SignificanceRaw
-rm -rf MutationRateClusters EntityCounts PostSignFilter CBASE AlignHg19 AffinityCounts ClusteringComplete CountDestructive Clustering SignificanceFiltered SignificanceRaw
+#rm -rf MutationRateClusters EntityCounts PostSignFilter CBASE AlignHg19 AffinityCounts ClusteringComplete CountDestructive Clustering SignificanceFiltered SignificanceRaw
 
 
