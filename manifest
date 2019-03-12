@@ -46,7 +46,7 @@ p2_value=
 
 p3_MODE=
 p3_TYPE=TEXT
-p3_default_value=1.1
+p3_default_value=3
 p3_description=Minimum number of samples per cluster
 p3_fileFormat=
 p3_flag=
@@ -56,11 +56,11 @@ p3_optional=
 p3_prefix=
 p3_prefix_when_specified=
 p3_type=java.lang.String
-p3_value=3
+p3_value=
 
 p4_MODE=
 p4_TYPE=TEXT
-p4_default_value=500
+p4_default_value=1000
 p4_description=Minimum number of mutations per cluster
 p4_fileFormat=
 p4_flag=
@@ -70,12 +70,12 @@ p4_optional=
 p4_prefix=
 p4_prefix_when_specified=
 p4_type=java.lang.String
-p4_value=1000
+p4_value=
 
 p5_MODE=
 p5_TYPE=TEXT
-p5_default_value=
-p5_description=Minimum number of samples for CBASE
+p5_default_value=100
+p5_description=The minimum number of samples for CBASE.
 p5_fileFormat=
 p5_flag=
 p5_name=min.cbase.samples
@@ -84,7 +84,8 @@ p5_optional=
 p5_prefix=
 p5_prefix_when_specified=
 p5_type=java.lang.String
-p5_value=100
+p5_value=
+
 
 p6_MODE=
 p6_TYPE=TEXT
@@ -98,7 +99,7 @@ p6_optional=
 p6_prefix=
 p6_prefix_when_specified=
 p6_type=java.lang.String
-p6_value=5000
+p6_value=
 
 privacy=public
 publicationDate=06/22/2018 09\:09 
