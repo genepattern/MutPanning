@@ -26,7 +26,7 @@ COMMAND_LINE="java -Xmx2G -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpannin
 LOCAL_DIR=$PWD
 ROOT_DIR='/Users/liefeld/GenePattern/gp_dev/docker/docker-mutpanning'
 
-docker run -v $ROOT_DIR:$ROOT_DIR -w $LOCAL_DIR/Job_1 -t genepattern/docker-mutpanning $COMMAND_LINE
+docker run -v $ROOT_DIR:$ROOT_DIR -w $LOCAL_DIR/Job_1 -t genepattern/docker-mutpanning:v0.7 $COMMAND_LINE
 
 
 

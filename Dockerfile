@@ -19,6 +19,8 @@ COPY . /mutpanning
 RUN javac -cp bin/commons-math3-3.6.1.jar:bin/jdistlib-0.4.5-bin.jar src/AffinityCount_Cosmic.java src/AffinityCount.java src/AlignHG19.java src/CBASE_Solutions.java src/ClusteringEntity.java src/ClusteringPanCancer.java src/ComputeMutationRateClusters.java src/ComputeMutationRateEntities.java src/ComputeSignificance_Uniform.java src/ComputeSignificance.java src/CountDestructiveMutations.java src/Filter_Step1.java src/Filter_Step2.java src/Filter_Step3.java src/MutPanning.java src/ReformatCBASE.java && \
 	mv src/*.class bin
 
+ENV PYTHONPATH "/usr/local/lib/python2.7/dist-packages"
+
 # 
 # Note the Hg19.tar.gz file is not in github but is available at https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.tar.gz
 #
