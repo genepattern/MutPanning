@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 12										*
+ * MutPanning 										*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -29,6 +29,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Hashtable;
 
 
 
@@ -38,12 +39,16 @@ public class Filter_Step1 {
 	static ArrayList<Gene>[] genes=new ArrayList[chr.length];
 	
 	static String[] entities=new String[0];
+	static String[] types={"","Uniform"};
 	static String[] files_sign=new String[2];
 	static String file_genes="";
-	static String[] file_out=new String[2];
-	static String file_count="";
+	static String file_out="";
+	//static String file_count="";
+	static String file_samples="";
+	static String file_annotation="";
+	static String file_align="";
 	static String[] index_header_samples={"ID","Sample","Cohort"};
-	
+	static Hashtable<Integer,Integer> table_entity=null;
 	
 	static String[] exclude={
 			"PPIAL4A",//too long
@@ -68,23 +73,26 @@ public class Filter_Step1 {
 	/*
 	 * argument0: root file
 	 * argument1: file samples
-	* argument2: path to the Hg19 folder
 	 */
 	
-	public static void main(String[] args){
+	public static void main(String[] args,String[] arg_entities){
 		
 		files_sign=new String[]{args[0]+"SignificanceRaw/Significance",args[0]+"SignificanceRaw/SignificanceUniform"};
 		file_genes=args[2]+"Exons_Hg19.txt";
-		file_out=new String[]{args[0]+"PostSignFilter/Queries/Query",args[0]+"PostSignFilter/Queries/QueryUniform"};
-		file_count=args[0]+"EntityCounts/EntityCounts";
+		file_out=args[0]+"PostSignFilter/Query.fa";//new String[]{args[0]+"PostSignFilter/Queries/Query",args[0]+"PostSignFilter/Queries/QueryUniform"};
+		file_align=args[0]+"AlignHg19/AlignHg19Chr";
+		file_annotation=args[2]+"AnnotationHg19/Annotation_chr";
+		//file_count=args[0]+"EntityCounts/EntityCounts";
+		file_samples=args[1];
 		
-		if(!new File(args[0]+"PostSignFilter/Queries/").exists()){
-			new File(args[0]+"PostSignFilter/Queries/").mkdirs();
+		if(!new File(args[0]+"PostSignFilter/").exists()){
+			new File(args[0]+"PostSignFilter/").mkdirs();
 		}
-		
+		entities=arg_entities;
 	
 		
 		//Determine all entity names, as clustering is performed separately for each Step this is needed to coordinate the order
+		/*
 		try{
 			FileInputStream in=new FileInputStream(args[1]);
 			DataInputStream inn=new DataInputStream(in);
@@ -100,7 +108,7 @@ public class Filter_Step1 {
 			}
 			input.close();
 			Collections.sort(aa);
-			aa.add("PanCancer");
+			//aa.add("PanCancer");
 			entities=new String[aa.size()];
 			for (int i=0;i<aa.size();i++){
 				entities[i]=aa.get(i);
@@ -109,7 +117,7 @@ public class Filter_Step1 {
 		catch(Exception e){
 			System.out.println(e);
 		}		
-		
+		*/
 		
 		try{
 			
@@ -151,29 +159,92 @@ public class Filter_Step1 {
 				Collections.sort(genes[i],comp);
 			}
 			
+			table_entity=new Hashtable<Integer,Integer>();
+			in=new FileInputStream(file_samples);
+			inn=new DataInputStream(in);
+			input= new BufferedReader(new InputStreamReader(inn));
+			int[] index_header=index_header(input.readLine().split("	"),index_header_samples);
+			s="";
+			while((s=input.readLine())!=null){
+				String[] t=s.split("	");
+				int ii=index(t[index_header[2]],entities);
+				table_entity.put(Integer.parseInt(t[index_header[0]]),ii);
+				//list[ii].add(Integer.parseInt(t[index_header[0]]));
+			}
+			input.close();
+			
+			
+			//FileWriter out=new FileWriter(file_out);//[l]+entities[k]
+			//BufferedWriter output= new BufferedWriter(out);
+			ArrayList<String>[][] sign_genes=new ArrayList[entities.length][2];
 			for (int l=0;l<2;l++){
 				for (int k=0;k<entities.length;k++){
+					sign_genes[k][l]=new ArrayList<String>();
+					//System.out.println(files_sign[l]+entities[k]+".txt"+"	"+new File(files_sign[l]+entities[k]+".txt").exists());
 					if(!new File(files_sign[l]+entities[k]+".txt").exists()){
 						continue;
 					}
-					
 					
 					//extract all significantly mutant genes. these are the regions in which the
 					//script searches for hotspot positions
 					in=new FileInputStream(files_sign[l]+entities[k]+".txt");
 					inn=new DataInputStream(in);
 					input= new BufferedReader(new InputStreamReader(inn));
-					input.readLine();
+					int ii=index("FDR",input.readLine().split("	"));
 				
-					ArrayList<String> sign_genes=new ArrayList<String>();
+					//ArrayList<String> sign_genes=new ArrayList<String>();
 					while((s=input.readLine())!=null){
 						String[] t=s.split("	");
-						if(Double.parseDouble(t[15])<=0.25){
-							sign_genes.add(t[0]);
+						if(Double.parseDouble(t[ii])<=0.25){
+							sign_genes[k][l].add(t[0]);
 						}
 					}
 					input.close();
 					
+				}
+			}
+			//output.close();
+			
+			ArrayList<String> sign_genes_combined=new ArrayList<String>();
+			Hashtable<String, Integer> table_sign_genes_combined=new Hashtable<String, Integer>();
+			Hashtable<String, Integer>[][] table_sign_genes=new Hashtable[sign_genes.length][];
+			for (int i=0;i<sign_genes.length;i++){
+				table_sign_genes[i]=new Hashtable[sign_genes[i].length];
+				for (int j=0;j<sign_genes[i].length;j++){
+					table_sign_genes[i][j]=new Hashtable<String, Integer>();
+					for (int k=0;k<sign_genes[i][j].size();k++){
+						if(table_sign_genes_combined.get(sign_genes[i][j].get(k))==null){
+							table_sign_genes_combined.put(sign_genes[i][j].get(k),sign_genes_combined.size());
+							sign_genes_combined.add(sign_genes[i][j].get(k));
+						}
+						table_sign_genes[i][j].put(sign_genes[i][j].get(k),k);
+					}
+				}
+			}
+			
+			//for (int i=0;i<sign_genes_combined.size();i++){
+			//	System.out.println(sign_genes_combined.get(i));
+			//}
+			
+			FileWriter out=new FileWriter(file_out);
+			BufferedWriter output= new BufferedWriter(out);for (int i=0;i<chr.length;i++){
+				ArrayList<String[]> names_seq=run(i,  table_sign_genes,table_sign_genes_combined);
+				for (int j=0;j<names_seq.size();j++){
+					//System.out.println(names_seq.get(j)[0]);
+					//System.out.println(names_seq.get(j)[1]);
+					output.write(names_seq.get(j)[0]);
+					output.newLine();
+					output.write(names_seq.get(j)[1]);
+					output.newLine();
+				}
+			}
+			output.close();
+			
+			
+			
+			/*
+			 
+			 
 					//handle the search for hotspot postions separately for each chr
 					Subthread[] threads=new Subthread[chr.length];
 					for (int i=0;i<threads.length;i++){
@@ -200,8 +271,6 @@ public class Filter_Step1 {
 					
 					
 					//output of the query in the format of an fastq file
-					FileWriter out=new FileWriter(file_out[l]+entities[k]+".fa");
-					BufferedWriter output= new BufferedWriter(out);
 					
 					for (int i=0;i<threads.length;i++){
 						for (int j=0;j<threads[i].names.size();j++){
@@ -211,12 +280,16 @@ public class Filter_Step1 {
 							output.newLine();
 						}
 					}
-					output.close();
-				}
-			}
+			 
+			 
+			 */
 			
 		}
 		catch(Exception e){
+			StackTraceElement[] aa=e.getStackTrace();
+			for (int i=0;i<aa.length;i++){
+				System.out.println(i+"	"+aa[i].getLineNumber());
+			}
 			System.out.println(e);
 		}
 	}
@@ -286,6 +359,7 @@ public class Filter_Step1 {
 		return max;
 	}
 	
+	
 	public static int index(String s, ArrayList<String> t){
 		for (int i=0;i<t.size();i++){
 			if(t.get(i).equals(s)){
@@ -311,118 +385,162 @@ public class Filter_Step1 {
 		return -1;
 	}
 	
+	/*
 	private static class Subthread extends Thread{
 		volatile boolean done=false;
 		int c=-1;
-		ArrayList<String> names=new ArrayList<String>();
-		ArrayList<String> seq=new ArrayList<String>();
-		ArrayList<String> sign_genes=new ArrayList<String>();
-		String entity="";
-		public void run(){
-			System.out.println("start "+chr[c]);
+//		ArrayList<String> names=new ArrayList<String>();
+//		ArrayList<String> seq=new ArrayList<String>();
+		ArrayList<String[]> names_seq=new ArrayList<String[]>();
+		ArrayList<String>[][] sign_genes=new ArrayList[0][0];//<String>();
+		ArrayList<String> sign_genes_combined=new ArrayList<String>();
+		
+		//String entity="";
+		
+	}*/
+	
+	
+	
+	public static ArrayList<String[]> run(int c, Hashtable<String,Integer>[][] table_sign_genes, Hashtable<String,Integer> table_sign_genes_combined){
+		System.out.println("start "+chr[c]);
+		ArrayList<String[]> names_seq=new ArrayList<String[]>();
+		
+		try{
+			FileInputStream in1=new FileInputStream(file_annotation+chr[c]+".txt");
+			DataInputStream inn1=new DataInputStream(in1);
+			BufferedReader input1= new BufferedReader(new InputStreamReader(inn1));
 			
-			try{
-				FileInputStream in=new FileInputStream(file_count+entity+"_Chr"+chr[c]+".txt");
-				DataInputStream inn=new DataInputStream(in);
-				BufferedReader input= new BufferedReader(new InputStreamReader(inn));
-				
-				ArrayList<Integer> position=new ArrayList<Integer>();
-				ArrayList<double[]> lambda=new ArrayList<double[]>();
-				ArrayList<String> nucl=new ArrayList<String>();
-				ArrayList<Double>coverage=new ArrayList<Double>();
-				ArrayList<int[]> label=new ArrayList<int[]>();
-				ArrayList<int[]> count=new ArrayList<int[]>();
-				
-				
-				//go through the reference squences of the genes and search for hotspot positions (at least 4 mutations)
-				//if the gene appears in the list of sign genes the sequence context aorund each
-				//hotspot position is saved as a fastq format. to have the context around a hotspot postions the reference
-				//sequence of each gene is saved in a queue.
-				for (int nn=0;nn<genes[c].size();nn++){
-					int ii=0;
-					if(position.size()>0){
-						while(ii<position.size()&&position.get(ii)<genes[c].get(nn).start){
-							ii++;
-						}
+			FileInputStream in2=new FileInputStream(file_align+chr[c]+".txt");
+			DataInputStream inn2=new DataInputStream(in2);
+			BufferedReader input2= new BufferedReader(new InputStreamReader(inn2));
+			
+			
+			ArrayList<Integer> position=new ArrayList<Integer>();
+			//ArrayList<double[]> lambda=new ArrayList<double[]>();
+			ArrayList<String> nucl=new ArrayList<String>();
+			ArrayList<Double>coverage=new ArrayList<Double>();
+			//ArrayList<int[]> label=new ArrayList<int[]>();
+			ArrayList<int[][]> count=new ArrayList<int[][]>();
+			
+			
+			//go through the reference squences of the genes and search for hotspot positions (at least 4 mutations)
+			//if the gene appears in the list of sign genes the sequence context aorund each
+			//hotspot position is saved as a fastq format. to have the context around a hotspot postions the reference
+			//sequence of each gene is saved in a queue.
+			for (int nn=0;nn<genes[c].size();nn++){
+				int ii=0;
+				if(position.size()>0){
+					while(ii<position.size()&&position.get(ii)<genes[c].get(nn).start){
+						ii++;
 					}
-					if(ii>0){
-						for (int i=ii-1;i>=0;i--){
-							nucl.remove(i);
-							lambda.remove(i);
-							position.remove(i);
-							coverage.remove(i);
-							count.remove(i);
-							label.remove(i);
-						}
+				}
+				if(ii>0){
+					for (int i=ii-1;i>=0;i--){
+						nucl.remove(i);
+						//lambda.remove(i);
+						position.remove(i);
+						coverage.remove(i);
+						count.remove(i);
+						//label.remove(i);
 					}
+				}
+				
+				String s1="";
+				while ((s1=input1.readLine())!=null){
+					String[] t1=s1.split("	");
+					String[] t2=input2.readLine().split("	");
 					
-					String s="";
-					while ((s=input.readLine())!=null){
-						String[] t=s.split("	");
-						position.add(Integer.parseInt(t[0]));
-						nucl.add(t[1]);
-						coverage.add(Double.parseDouble(t[2]));
-						String[] tt=t[3].split(";");
-						label.add(new int[]{Integer.parseInt(tt[0]),Integer.parseInt(tt[1]),Integer.parseInt(tt[2])});
-						tt=t[4].split(";");
-						lambda.add(new double[]{Double.parseDouble(tt[0]),Double.parseDouble(tt[1]),Double.parseDouble(tt[2])});
-						tt=t[5].split(";");
-						count.add(new int[]{Integer.parseInt(tt[0]),Integer.parseInt(tt[1]),Integer.parseInt(tt[2])});
+					position.add(Integer.parseInt(t1[0]));
+					nucl.add(t1[1]);
+					coverage.add(Double.parseDouble(t1[2]));
 					
-						if(Integer.parseInt(t[0])>=genes[c].get(nn).end){
-							break;
-						}
-					}
-
-					if(index(genes[c].get(nn).name,sign_genes)!=-1){
-						int counter=1;
-						for (int i=0;i<position.size();i++){
-							if(!genes[c].get(nn).contains(position.get(i))){
-								continue;
+					int[][] entity_count=new int[entities.length][3];
+					for (int j=0;j<3;j++){
+						if(t2.length>j&&!t2[j].equals("")){
+							String[] tt=t2[j].split(";");
+							for (int k=0;k<tt.length;k++){
+								entity_count[table_entity.get(Integer.parseInt(tt[k]))][j]++;
 							}
-							for (int j=0;j<3;j++){
-								if(count.get(i)[j]<4){
-									continue;
-								}
-								String ref_seq="";
-								String alt_seq="";
-								int max_index=-100;
-								int min_index=-100;
-								for (int k=-25;k<=25;k++){
-									if(k+i>=0&&k+i<position.size()&&position.get(k+i)==position.get(i)+k){
-										max_index=k;
-										if(min_index==-100){
-											min_index=k;
+						}
+					}
+					
+					//String[] tt=t[3].split(";");
+					//label.add(new int[]{Integer.parseInt(tt[0]),Integer.parseInt(tt[1]),Integer.parseInt(tt[2])});
+					//tt=t[4].split(";");
+					//lambda.add(new double[]{Double.parseDouble(tt[0]),Double.parseDouble(tt[1]),Double.parseDouble(tt[2])});
+					//tt=t[5].split(";");
+					count.add(entity_count);//new int[]{Integer.parseInt(tt[0]),Integer.parseInt(tt[1]),Integer.parseInt(tt[2])}
+				
+					if(Integer.parseInt(t1[0])>=genes[c].get(nn).end){
+						break;
+					}
+				}
+				
+				if(table_sign_genes_combined.get(genes[c].get(nn).name)!=null){
+					ArrayList<Integer> index=new ArrayList<Integer>();
+					for (int i=0;i<position.size();i++){
+						if(genes[c].get(nn).contains(position.get(i))){
+							index.add(i);
+						}
+					}
+					for (int kk=0;kk<entities.length;kk++){
+						for (int ll=0;ll<2;ll++){
+							//if(index(genes[c].get(nn).name,sign_genes[kk][ll])!=-1){
+							if(table_sign_genes[kk][ll].get(genes[c].get(nn).name)!=null){
+								
+								int counter=1;
+								for (int iii=0;iii<index.size();iii++){
+									int i=index.get(iii);
+									for (int j=0;j<3;j++){
+										if(count.get(i)[kk][j]<4){
+											continue;
 										}
-										if(k!=0){
-											ref_seq=ref_seq+nucl.get(i+k);
-											alt_seq=alt_seq+nucl.get(i+k);
+										String ref_seq="";
+										String alt_seq="";
+										int max_index=-100;
+										int min_index=-100;
+										for (int k=-25;k<=25;k++){
+											if(k+i>=0&&k+i<position.size()&&position.get(k+i)==position.get(i)+k){
+												max_index=k;
+												if(min_index==-100){
+													min_index=k;
+												}
+												if(k!=0){
+													ref_seq=ref_seq+nucl.get(i+k);
+													alt_seq=alt_seq+nucl.get(i+k);
+												}
+												else{
+													ref_seq=ref_seq+nucl.get(i+k);
+													alt_seq=alt_seq+mut(nucl.get(i+k),j);
+												}
+											}
 										}
-										else{
-											ref_seq=ref_seq+nucl.get(i+k);
-											alt_seq=alt_seq+mut(nucl.get(i+k),j);
-										}
+										//names.add(">"+genes[c].get(nn).name+"_ref_"+counter+";"+min_index+","+max_index+";"+count.get(i)[j]+";"+chr[c]+","+position.get(i));
+										//seq.add(ref_seq);
+										names_seq.add(new String[]{">"+entities[kk]+"_"+types[ll]+":"+genes[c].get(nn).name+"_alt_"+counter+";"+min_index+","+max_index+";"+count.get(i)[kk][j]+";"+chr[c]+","+position.get(i)+","+j,alt_seq});
+										//System.out.println(names_seq.size());
+										counter++;
 									}
 								}
-								//names.add(">"+genes[c].get(nn).name+"_ref_"+counter+";"+min_index+","+max_index+";"+count.get(i)[j]+";"+chr[c]+","+position.get(i));
-								//seq.add(ref_seq);
-								names.add(">"+genes[c].get(nn).name+"_alt_"+counter+";"+min_index+","+max_index+";"+count.get(i)[j]+";"+chr[c]+","+position.get(i)+","+j);
-								seq.add(alt_seq);
-								counter++;
 							}
-							
 						}
+						
 					}
-					
 				}
-				input.close();
+					
 			}
-			catch(Exception e){
-				System.out.println(e);
-			}
-			System.out.println("done "+chr[c]);
-			done=true;
+			input1.close();
+			input2.close();
 		}
+		catch(Exception e){
+			StackTraceElement[] aa=e.getStackTrace();
+			for (int i=0;i<aa.length;i++){
+				System.out.println(i+"	"+aa[i].getLineNumber());
+			}
+			System.out.println(e);
+		}
+		System.out.println("done "+chr[c]);
+		return names_seq;
 	}
 	
 	

@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 3									*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 public class AffinityCount_Cosmic {
+	static String file_annotation="";
 	static String file_aligned="";
 	static String file_samples="";
 	static String file_out="";
@@ -45,6 +46,7 @@ public class AffinityCount_Cosmic {
 	 */
 	public static void main(String[] args){
 		
+		file_annotation=args[2]+"AnnotationHg19/Annotation_chr";
 		file_aligned=args[0]+"AlignHg19/AlignHg19Chr";
 		file_samples=args[1];
 		file_out=args[0]+"AffinityCounts/CosmicCount.txt";
@@ -70,32 +72,20 @@ public class AffinityCount_Cosmic {
 			input.close();
 			no_samples=sample_list.size();
 			//compute count vector on each chr separately
-			Subthread[] subthreads=new Subthread[chr.length];
-			for (int i=0;i<subthreads.length;i++){
-				subthreads[i]=new Subthread();
-				subthreads[i].chr=chr[i];
-				subthreads[i].start();
-			}
+			
 			
 			//wait until all calculations are done
-			boolean all_done=false;
-			do{
-				Thread.sleep(10000);
-				all_done=true;
-				for (int i=0;i<subthreads.length;i++){
-					if(!subthreads[i].done){
-						all_done=false;
-						break;
-					}
-				}
-			}while(!all_done);
+			int[][][] cc=new int[chr.length][][];
+			for (int i=0;i<chr.length;i++){
+				cc[i]=count(chr[i]);
+			}
 			
 			//sum up count vectors over chr
 			int[][] cosmic_count =new int[no_samples][96];
 			for (int i=0;i<cosmic_count.length;i++){
 				for (int j=0;j<cosmic_count[i].length;j++){
-					for (int m=0;m<subthreads.length;m++){
-						cosmic_count[i][j]+=subthreads[m].cosmic_count[i][j];
+					for (int m=0;m<cc.length;m++){
+						cosmic_count[i][j]+=cc[m][i][j];
 					}		
 				}
 			}
@@ -144,129 +134,131 @@ public class AffinityCount_Cosmic {
 		return indices;
 	}
 	
-	private static class Subthread extends Thread{
-		String chr="";
+
+	public static int[][] count(String chr){
 		
-		int[][] cosmic_count=new int[0][0];
-		volatile boolean done=false;
-		public void run(){
-			done=false;
+		int[][]  cosmic_count =new int[no_samples][96];
+		try{
+			ArrayList<Integer> queue_pos=new ArrayList<Integer>();
+			ArrayList<String> queue_nucl=new ArrayList<String>();
+			ArrayList<String> queue_sample1=new ArrayList<String>();
+			ArrayList<String> queue_sample2=new ArrayList<String>();
+			ArrayList<String> queue_sample3=new ArrayList<String>();
 			
-			cosmic_count =new int[no_samples][96];
-			try{
-				ArrayList<Integer> queue_pos=new ArrayList<Integer>();
-				ArrayList<String> queue_nucl=new ArrayList<String>();
-				ArrayList<String> queue_sample1=new ArrayList<String>();
-				ArrayList<String> queue_sample2=new ArrayList<String>();
-				ArrayList<String> queue_sample3=new ArrayList<String>();
+			String s="";
+			
+			//go through the aligned mutation file and read positions into a queue
+			FileInputStream in=new FileInputStream(file_aligned+chr+".txt");
+			DataInputStream inn=new DataInputStream(in);
+			BufferedReader input= new BufferedReader(new InputStreamReader(inn));
+			
+			FileInputStream in2=new FileInputStream(file_annotation+chr+".txt");
+			DataInputStream inn2=new DataInputStream(in2);
+			BufferedReader input2= new BufferedReader(new InputStreamReader(inn2));
+		
+			
+			while((s=input.readLine())!=null){
+				String[] t=s.split("	");
+				String[] t2=input2.readLine().split("	");
 				
-				String s="";
+				queue_pos.add(Integer.parseInt(t2[0]));
+				queue_nucl.add(t2[1]);
+				if(0<t.length){
+					queue_sample1.add(t[0]);
+				}
+				else{
+					queue_sample1.add("");
+				}
+				if(1<t.length){
+					queue_sample2.add(t[1]);
+				}
+				else{
+					queue_sample2.add("");
+				}
+				if(2<t.length){
+					queue_sample3.add(t[2]);
+				}
+				else{
+					queue_sample3.add("");
+				}
 				
-				//go through the aligned mutation file and read positions into a queue
-				FileInputStream in=new FileInputStream(file_aligned+chr+".txt");
-				DataInputStream inn=new DataInputStream(in);
-				BufferedReader input= new BufferedReader(new InputStreamReader(inn));
-				while((s=input.readLine())!=null){
-					String[] t=s.split("	");
-					
-					queue_pos.add(Integer.parseInt(t[0]));
-					queue_nucl.add(t[1]);
-					if(3<t.length){
-						queue_sample1.add(t[3]);
-					}
-					else{
-						queue_sample1.add("");
-					}
-					if(4<t.length){
-						queue_sample2.add(t[4]);
-					}
-					else{
-						queue_sample2.add("");
-					}
-					if(5<t.length){
-						queue_sample3.add(t[5]);
-					}
-					else{
-						queue_sample3.add("");
-					}
-					
-					//as soon as queue is large engouth count nucleotides around the center of the queue
-					//update count vectors and delete the first element in the queue
-					if(queue_pos.size()>3){
-						if(!queue_sample1.get(1).equals("")||!queue_sample2.get(1).equals("")||!queue_sample3.get(1).equals("")){
-							if(queue_pos.get(1)+1==queue_pos.get(1+1)&&queue_pos.get(1)-1==queue_pos.get(1-1)){
-								int triplet_index=-1;
-								if(queue_nucl.get(1).equals("C")||queue_nucl.get(1).equals("T")){
-									triplet_index=index_nucl(queue_nucl.get(0))*4+index_nucl(queue_nucl.get(2));
-								}
-								else if(queue_nucl.get(1).equals("G")||queue_nucl.get(1).equals("A")){
-									triplet_index=(3-index_nucl(queue_nucl.get(2)))*4+(3-index_nucl(queue_nucl.get(0)));
-								}
-								
-								String[] tt1=queue_sample1.get(1).split(";");
-								String[] tt2=queue_sample2.get(1).split(";");
-								String[] tt3=queue_sample3.get(1).split(";");
-								
-								if(queue_nucl.get(1).equals("C")||queue_nucl.get(1).equals("G")){
-									if(!queue_sample1.get(1).equals("")){
-										for (int j=0;j<tt1.length;j++){
-											cosmic_count[Integer.parseInt(tt1[j])][0+triplet_index]++;
-										}
-									}
-									if(!queue_sample2.get(1).equals("")){
-										for (int j=0;j<tt2.length;j++){
-											cosmic_count[Integer.parseInt(tt2[j])][16+triplet_index]++;
-										}
-									}
-									if(!queue_sample3.get(1).equals("")){
-										for (int j=0;j<tt3.length;j++){
-											cosmic_count[Integer.parseInt(tt3[j])][32+triplet_index]++;
-										}
-									}
-									
-								}
-								else if(queue_nucl.get(1).equals("A")||queue_nucl.get(1).equals("T")){
-									if(!queue_sample1.get(1).equals("")){
-										for (int j=0;j<tt1.length;j++){
-											cosmic_count[Integer.parseInt(tt1[j])][48+0+triplet_index]++;
-										}
-									}
-									if(!queue_sample2.get(1).equals("")){
-										for (int j=0;j<tt2.length;j++){
-											cosmic_count[Integer.parseInt(tt2[j])][48+32+triplet_index]++;//!!!!
-										}
-									}
-									if(!queue_sample3.get(1).equals("")){
-										for (int j=0;j<tt3.length;j++){
-											cosmic_count[Integer.parseInt(tt3[j])][48+16+triplet_index]++;//!!!!
-										}
-									}
-									
-									
-								}
+				//as soon as queue is large engouth count nucleotides around the center of the queue
+				//update count vectors and delete the first element in the queue
+				if(queue_pos.size()>3){
+					if(!queue_sample1.get(1).equals("")||!queue_sample2.get(1).equals("")||!queue_sample3.get(1).equals("")){
+						if(queue_pos.get(1)+1==queue_pos.get(1+1)&&queue_pos.get(1)-1==queue_pos.get(1-1)){
+							int triplet_index=-1;
+							if(queue_nucl.get(1).equals("C")||queue_nucl.get(1).equals("T")){
+								triplet_index=index_nucl(queue_nucl.get(0))*4+index_nucl(queue_nucl.get(2));
 							}
-						
+							else if(queue_nucl.get(1).equals("G")||queue_nucl.get(1).equals("A")){
+								triplet_index=(3-index_nucl(queue_nucl.get(2)))*4+(3-index_nucl(queue_nucl.get(0)));
+							}
+							
+							String[] tt1=queue_sample1.get(1).split(";");
+							String[] tt2=queue_sample2.get(1).split(";");
+							String[] tt3=queue_sample3.get(1).split(";");
+							
+							if(queue_nucl.get(1).equals("C")||queue_nucl.get(1).equals("G")){
+								if(!queue_sample1.get(1).equals("")){
+									for (int j=0;j<tt1.length;j++){
+										cosmic_count[Integer.parseInt(tt1[j])][0+triplet_index]++;
+									}
+								}
+								if(!queue_sample2.get(1).equals("")){
+									for (int j=0;j<tt2.length;j++){
+										cosmic_count[Integer.parseInt(tt2[j])][16+triplet_index]++;
+									}
+								}
+								if(!queue_sample3.get(1).equals("")){
+									for (int j=0;j<tt3.length;j++){
+										cosmic_count[Integer.parseInt(tt3[j])][32+triplet_index]++;
+									}
+								}
+								
+							}
+							else if(queue_nucl.get(1).equals("A")||queue_nucl.get(1).equals("T")){
+								if(!queue_sample1.get(1).equals("")){
+									for (int j=0;j<tt1.length;j++){
+										cosmic_count[Integer.parseInt(tt1[j])][48+0+triplet_index]++;
+									}
+								}
+								if(!queue_sample2.get(1).equals("")){
+									for (int j=0;j<tt2.length;j++){
+										cosmic_count[Integer.parseInt(tt2[j])][48+32+triplet_index]++;//!!!!
+									}
+								}
+								if(!queue_sample3.get(1).equals("")){
+									for (int j=0;j<tt3.length;j++){
+										cosmic_count[Integer.parseInt(tt3[j])][48+16+triplet_index]++;//!!!!
+									}
+								}
+								
+								
+							}
 						}
-						queue_pos.remove(0);
-						queue_nucl.remove(0);
-						queue_sample1.remove(0);
-						queue_sample2.remove(0);
-						queue_sample3.remove(0);
-						
+					
 					}
+					queue_pos.remove(0);
+					queue_nucl.remove(0);
+					queue_sample1.remove(0);
+					queue_sample2.remove(0);
+					queue_sample3.remove(0);
+					
 				}
-				input.close();
-				done=true;
 			}
-			catch(Exception e){
-				StackTraceElement[] aa=e.getStackTrace();
-				for (int i=0;i<aa.length;i++){
-					System.out.println(i+"	"+aa[i].getLineNumber());
-				}
-				System.out.println(e);
-			}
-			
+			input.close();
+			input2.close();
 		}
+		catch(Exception e){
+			StackTraceElement[] aa=e.getStackTrace();
+			for (int i=0;i<aa.length;i++){
+				System.out.println(i+"	"+aa[i].getLineNumber());
+			}
+			System.out.println(e);
+		}
+		
+		return cosmic_count;
 	}
 	
 	public static int index_nucl(String s){

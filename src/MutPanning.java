@@ -3,7 +3,7 @@
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -12,12 +12,15 @@
  * around mutations. This script coordinates the execution	*
  * of all substeps. All arguments are facultative except	*
  * of the root file in which the script should write its 	*
- * (intermediate) output files. In this folde the script	*
- * expects a "Hg19" folder and a "scr" folder. Please 		*
- * launch this script with -Xmx55G in the VM arguments to	*
- * allocate enough memory. Designed to run on a Linux		*
- * platform with at least 24 CPUs, 64 GB RAM and 2TB hard	*
- * disk space to store the intermediate output files.		*
+ * (intermediate) output files. If no other arguments are 	*
+ * provided the script expects the maf file, the sample 	*
+ * file and the Hg19 folder in this folder. Otherwise, paths*
+ * to maf file, sample file and Hg19 folder can be provided *
+ * as separate arguments. Please launch this script with    *
+ * -Xmx10G in the VM arguments to allocate enough memory. 	*
+ * Designed to run on a Linux or MacOS platform with 		*
+ * 2 cores, 10 GB RAM and 3GB hard disk space (2.75GB for 	*
+ * Hg19 folder and 350 MB for intermediate output files.	*
  *************************************************************/
 
 
@@ -36,6 +39,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.apache.commons.math3.special.Gamma;
+
 import com.sun.management.OperatingSystemMXBean.*;
 
 public class MutPanning {
@@ -43,21 +48,19 @@ public class MutPanning {
 	/*	argument 0: root file, where all the other files can be found
 	 * argument 1: maf file (standard value: root file/MutationsComplete.maf)
 	 * argument 2: sample annotation file (standard value: root file/SamplesComplete.txt)
-	 * argument3 : minimal no. samples per cluster (standard value 3)
-	 * argument4: minimal no. mutations per cluster (standard value 1000)
-	 *argument5: no cpus available to distribute clustering & CBASE workload (standard value 24)
+	argument 3: path to Hg19 folder (standard value root file/Hg19/)
+	 * argument4 : minimal no. samples per cluster (standard value 3)
+	 * argument5: minimal no. mutations per cluster (standard value 1000)
 	 arugment 6: min no. samples for CBASE (standard value 100)
 	 argument 7: min no. mutations for CBASE (standard value 5000)
-	argument 8: path to python script to compute distribution of nonsynonymous mutation counts (standard value: root file/src/ComputeDistribution.py)
-	argument 9: path to Hg19 folder (standard value root file/Hg19/)
 	
 	 */
 	
 	static String[] index_header_maf={"Hugo_Symbol","Chromosome","Start_Position","End_Position","Strand","Variant_Classification","Variant_Type","Reference_Allele","Tumor_Seq_Allele1","Tumor_Seq_Allele2","Tumor_Sample_Barcode"};
 	static String[] index_header_samples={"ID","Sample","Cohort"};
+	static String[] chr={"1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X","Y"};
 	
-	//TODO: make the version variable so that not static columns are expected but rather by variable column headers
-	//that we can write into the manual
+	
 	
 	public static void main(String[] arguments){
 		
@@ -85,13 +88,13 @@ public class MutPanning {
 			args[2]=args[0]+"SamplesComplete.txt";
 		}
 		if(args[3].equals("")){
-			args[3]="3";
+			args[3]=args[0]+"Hg19/";
 		}
 		if(args[4].equals("")){
-			args[4]="1000";
+			args[4]="3";
 		}
 		if(args[5].equals("")){
-			args[5]="24";
+			args[5]="1000";
 		}
 		if(args[6].equals("")){
 			args[6]="100";
@@ -99,102 +102,128 @@ public class MutPanning {
 		if(args[7].equals("")){
 			args[7]="5000";
 		}
-		if(args[8].equals("")){
-			args[8]=args[0]+"src/ComputeDistribution.py";
-		}
-		if(args[9].equals("")){
-			args[9]=args[0]+"Hg19/";
-		}
+		
 		
 		System.out.println("Launching MutPanning with root file "+arguments[0]);
+		//System.out.println(System.currentTimeMillis());
 		
 		
-		System.out.println("Aligning Maf to Hg19 - Step 1");
-		AlignHG19.main(new String[]{args[0],args[1],args[2],"0",args[9]});
-		System.out.println("Aligning Maf to Hg19 - Step 2");
-		AlignHG19.main(new String[]{args[0],args[1],args[2],"1",args[9]});
-		System.out.println("Aligning Maf to Hg19 - Step 3");
-		AlignHG19.main(new String[]{args[0],args[1],args[2],"2",args[9]});
-		System.out.println("Aligning Maf to Hg19 - Step 4");
-		AlignHG19.main(new String[]{args[0],args[1],args[2],"3",args[9]});
+		reindex_samples(args[2],args[0]+"SamplesCompleteReindex.txt");
+		args[2]=args[0]+"SamplesCompleteReindex.txt";
+		
+		
+		System.out.println("Aligning Maf to Hg19");// - "+chr[i]);
+		//System.out.println(System.currentTimeMillis());
+		AlignHG19.main(new String[]{args[0],args[1],args[2],args[3]});//,chr[i]});
 		
 		System.out.println("Determining Count Vectors");
-		AffinityCount.main(new String[]{args[0],args[2]});
-		AffinityCount_Cosmic.main(new String[]{args[0],args[2]});
+		//System.out.println(System.currentTimeMillis());
+		AffinityCount.main(new String[]{args[0],args[2],args[3]});
+		AffinityCount_Cosmic.main(new String[]{args[0],args[2],args[3]});
 		
 		System.out.println("Clustering for Each Cancer Type");
-		ClusteringEntity.main(new String[]{args[0],args[2],args[5],args[9]});
+		//System.out.println(System.currentTimeMillis());
+		ClusteringEntity.main(new String[]{args[0],args[2],args[3]});
 		
 		System.out.println("Clustering PanCancer");
-		ClusteringPanCancer.main(new String[]{args[0],args[2],args[3],args[4],args[5],args[9]});
-	
-		System.out.println("Compute Mutation Rate Clusters");
-		ComputeMutationRateClusters.main(new String[]{args[0],args[9]});
-	
-		System.out.println("Compute Mutation Rate Entities");
-		ComputeMutationRateEntities.main(new String[]{args[0],args[2],args[9]});
-		
-		System.out.println("Count Destructive Mutations");
-		CountDestructiveMutations.main(new String[]{args[0],args[1],args[2],args[9]});
-		
-		System.out.println("Reformat files for CBASE");
-		ReformatCBASE.main(new String[]{args[0],args[1],args[2],args[9]});
+		//System.out.println(System.currentTimeMillis());
+		ClusteringPanCancer.main(new String[]{args[0],args[2],args[4],args[5],args[3]});
 
 		
-		String[] entities=entities_pancancer(args[2]);
+		
+		
+		System.out.println("Count Destructive Mutations");
+		//System.out.println(System.currentTimeMillis());
+		CountDestructiveMutations.main(new String[]{args[0],args[1],args[2],args[3]});
+		
+		
+		System.out.println("Compute Mutation Rate Entities/Clusters");
+		//System.out.println(System.currentTimeMillis());
+		ComputeMutationRateClusters_Entities.main(new String[]{args[0],args[2],args[3]});
+			
+		
+		
+		System.out.println("Reformat files for CBASE");
+		//System.out.println(System.currentTimeMillis());
+		// delete permantently ReformatCBASE_Step1.main(new String[]{args[0],args[2],args[3]});
+		//System.out.println(System.currentTimeMillis());
+		ReformatCBASE.main(new String[]{args[0],args[1],args[2],args[3]});
+
+		
+		System.out.println("Execute the parameter estimation for CBASE");
+		//System.out.println(System.currentTimeMillis());
+		CBASE_Solutions.main(new String[]{args[0],args[2]});
+		
+		String[] entities=entities(args[2]);
+		boolean[] compute_uniform=new boolean[entities.length];
 		ArrayList<String>[] samples=samples(args[2],entities);
 		int[] count=count(args[0]+"AffinityCounts/AffinityCount.txt",samples);
 		
-		
-		
-		
-		System.out.println("Execute the parameter estimation for CBASE");
-		CBASE_Solutions.main(new String[]{args[0],args[2]});
-		
-		System.out.println("Compute the mutation count distributions based on CBASE");
-		mkdir(args[0]+"CBASE/Distributions/");
-		String[] command_step2=new String[entities.length];
-		String[] output_files_step2=new String[entities.length];
-		for (int i=0;i<entities.length;i++){
-			output_files_step2[i]=args[0]+"CBASE/Distributions"+entities[i]+".txt";
-			command_step2[i]="python "+args[8]+" \""+args[0]+"CBASE/Counts/CountSilent"+entities[i]+".txt\" \""+args[0]+"CBASE/Counts/Count"+entities[i]+".txt\" \""+args[0]+"CBASE/Parameters_Summary/Parameters"+entities[i]+".txt\" \""+args[0]+"CBASE/Distributions/"+entities[i]+".txt\"";
-		}
-		execute(command_step2,output_files_step2);
-		
 		System.out.println("Computing Significance");
+		//System.out.println(System.currentTimeMillis());
 		for (int i=0;i<entities.length;i++){
 			System.out.println(entities[i]);
 			if(samples[i].size()<Integer.parseInt(args[6])||count[i]<Integer.parseInt(args[7])){
-				ComputeSignificance_Uniform.main(new String[]{args[0],entities[i],args[9]});
+				compute_uniform[i]=true;
 			}
-			ComputeSignificance.main(new String[]{args[0],entities[i],args[9]});
+			else{
+				compute_uniform[i]=false;
+			}
 		}
+		
+		ComputeSignificance.main(new String[]{args[0],args[2],args[3]},entities,compute_uniform);
+		
+		
+		
+		
+		
+		//ArrayList<String>[] samples=samples(args[2],entities);
+		//int[] count=count(args[0]+"AffinityCounts/AffinityCount.txt",samples);
+		
+		
+		
 		
 		System.out.println("Start Filtering of significant genes");
 		System.out.println("Filtering Step 1 - Preparing Blat Queries");
-	
+		//System.out.println(System.currentTimeMillis());
+		Filter_Step1.main(new String[]{args[0],args[2],args[3]},entities);
 		
-		Filter_Step1.main(new String[]{args[0],args[2],args[9]});
+		
 		System.out.println("Performing Blat Queries");
-		File[] files_query=new File(args[0]+"PostSignFilter/Queries/").listFiles();
+		//System.out.println(System.currentTimeMillis());
+		//File[] files_query=new File(args[0]+"PostSignFilter/Queries/").listFiles();
 		
-		mkdir(args[0]+"PostSignFilter/OutputsBLAT");
-		String[] command_blat=new String[files_query.length];
-		String[] output_files_blat=new String[files_query.length];
+		//mkdir(args[0]+"PostSignFilter/OutputsBLAT");
 		
 		
-		for (int i=0;i<files_query.length;i++){			
-			output_files_blat[i]=args[0]+"PostSignFilter/OutputsBLAT/Output"+files_query[i].getName().substring(5,files_query[i].getName().length()-3)+".txt";
-			command_blat[i]="cd "+args[9]+"SignificanceFilter/"+" && ./blat hg19.2bit "+files_query[i].getAbsolutePath()+" -ooc=11.ooc -out=pslx "+output_files_blat[i];//+" && cd "+args[0];
+		
+		//String output_file_blat=args[0]+"PostSignFilter/OutputBLAT.txt";
+		String command_blat="";//"cd "+args[3]+"SignificanceFilter/"+" && ./blat hg19.2bit "+args[0]+"PostSignFilter/Query.fa"+" -ooc=11.ooc -out=pslx "+args[0]+"PostSignFilter/OutputBLAT.txt";//+" && cd "+args[0];
+	
+		String OS = System.getProperty("os.name").toLowerCase();
+		if(OS.indexOf("mac") >= 0){
+			command_blat="cd "+args[3]+"SignificanceFilter/"+" && ./blat_mac hg19.2bit "+args[0]+"PostSignFilter/Query.fa"+" -ooc=11.ooc -out=pslx "+args[0]+"PostSignFilter/OutputBLAT.txt";//+" && cd "+args[0];	
+		}
+		else if(OS.indexOf("nix") >= 0 || OS.indexOf("nux") >= 0 || OS.indexOf("aix") > 0){
+			command_blat="cd "+args[3]+"SignificanceFilter/"+" && ./blat_linux hg19.2bit "+args[0]+"PostSignFilter/Query.fa"+" -ooc=11.ooc -out=pslx "+args[0]+"PostSignFilter/OutputBLAT.txt";//+" && cd "+args[0];	
+		}
+		
+		if(!command_blat.equals("")){
+			execute(command_blat);
+		}
+		
+		
+		if(new File(args[0]+"/PostSignFilter/OutputBLAT.txt").exists()){
+			System.out.println("Filtering Step 2 - Evaluating Blat Results");
+			//System.out.println(System.currentTimeMillis());
+			Filter_Step2.main(new String[]{args[0],args[2]},entities,compute_uniform);
 			
 		}
-		execute(command_blat,output_files_blat);//,Integer.parseInt(args[5])
 		
-		System.out.println("Filtering Step 2 - Evaluating Blat Results");
-		Filter_Step2.main(new String[]{args[0],args[2]});
 		
 		System.out.println("Filtering Step 3 - Filtering out Genes");
-		Filter_Step3.main(new String[]{args[0],args[2],args[9]});
+		//System.out.println(System.currentTimeMillis());
+		Filter_Step3.main(new String[]{args[0],args[2],args[3]},entities,compute_uniform);
 		
 	
 	}
@@ -202,6 +231,7 @@ public class MutPanning {
 	
 	
 	//equally distribute the commands on the no_cpus. make sure that commands are always redistributed as soon as a cpu becomes free
+	/*
 	public static void execute(String[] commands, String[] output_files){
 		int no_cpu=24;
 		CommandProcess[] processes=new CommandProcess[commands.length];
@@ -246,6 +276,60 @@ public class MutPanning {
 			}
 		}
 	}
+	*/
+	
+	public static void reindex_samples(String file_in, String file_out){
+		try{
+			FileInputStream in=new FileInputStream(file_in);
+			DataInputStream inn=new DataInputStream(in);
+			BufferedReader input= new BufferedReader(new InputStreamReader(inn));
+			FileWriter out=new FileWriter(file_out);
+			BufferedWriter output= new BufferedWriter(out);
+			String[] tt=input.readLine().split("	");
+			int[] index={index("Sample",tt),index("Cohort",tt)};
+			output.write("ID	Sample	Cohort");
+			output.newLine();
+			int n=0;
+			String s="";
+			while((s=input.readLine())!=null){
+				String[] t=s.split("	");
+				output.write(n+"	"+t[index[0]]+"	"+t[index[1]]);
+				output.newLine();
+				n++;
+			}
+			input.close();
+			output.close();
+		}
+		catch(Exception e){
+			System.out.println(e);
+		}
+	}
+	
+	public static void execute(String command){
+		System.out.println("starting "+command);//+"	"+system_cpu_load()+"	"+process_cpu_load());
+		//boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+		
+		//if(!new File(output_file).exists()){
+			Process process=null;
+			try{
+				//if (isWindows) {
+				//    process = Runtime.getRuntime().exec("cmd.exe /c "+command);
+				//} else {
+					String[] commands = { "/bin/bash", "-c", command };
+					process = Runtime.getRuntime().exec(commands);
+					
+				//}	
+				process.waitFor();
+				
+			}
+			catch(Exception e){
+				System.out.println(e);
+			}
+		//}
+		
+		System.out.println("done "+command);
+	}
+	
 	
 	
 	private static class CommandProcess extends Thread{
@@ -403,6 +487,15 @@ public class MutPanning {
 			System.out.println(e);
 		}
 		return new String[0];
+	}
+	
+	public static int index(String s, String[] t){
+		for (int i=0;i<t.length;i++){
+			if(t[i].equals(s)){
+				return i;
+			}
+		}
+		return -1;
 	}
 	
 	public static int[] index_header(String[] header, String[] ideal_header){

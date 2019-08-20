@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 14										*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -38,6 +38,7 @@ public class Filter_Step3 {
 	
 	
 	static String[] entities=new String[0];
+	static boolean[] compute_uniform=new boolean[0];
 	static ArrayList<String> symbol=new ArrayList<String>();
 	static Hashtable<String,Integer> table=new Hashtable<String,Integer>();
 	static ArrayList<String> census=new ArrayList<String>(); 
@@ -49,10 +50,13 @@ public class Filter_Step3 {
 	 * argument0: root file
 	 * 
 	 * argument1: file samples
-	* argument2: path to the Hg19 folder
 	 */
 	
-	public static void main(String[] args){
+	public static void main(String[] args, String[] args_entities, boolean[] args_compute_uniform){
+		entities=args_entities;
+		compute_uniform=args_compute_uniform;
+		
+		
 		try{
 			
 			if(!new File(args[0]+"SignificanceFiltered/").exists()){
@@ -115,6 +119,7 @@ public class Filter_Step3 {
 		}
 		
 		//Determine all entity names, as clustering is performed separately for each Step this is needed to coordinate the order
+		/*
 		try{
 			FileInputStream in=new FileInputStream(args[1]);
 			DataInputStream inn=new DataInputStream(in);
@@ -130,7 +135,7 @@ public class Filter_Step3 {
 			}
 			input.close();
 			Collections.sort(aa);
-			aa.add("PanCancer");
+			//aa.add("PanCancer");
 			entities=new String[aa.size()];
 			for (int i=0;i<aa.size();i++){
 				entities[i]=aa.get(i);
@@ -138,9 +143,9 @@ public class Filter_Step3 {
 		}
 		catch(Exception e){
 			System.out.println(e);
-		}	
+		}*/	
 		
-		
+		String[] header_label={"Name","TargetSize","TargetSizeSyn","Count","CountSyn","SignificanceSyn","FDRSyn","Significance","FDR"};
 		
 		for (int l=0;l<2;l++){
 			for (int k=0;k<entities.length;k++){
@@ -154,27 +159,26 @@ public class Filter_Step3 {
 					FileInputStream in=new FileInputStream(file_sign[l]+entities[k]+".txt");
 					DataInputStream inn=new DataInputStream(in);
 					BufferedReader input= new BufferedReader(new InputStreamReader(inn));
-					String header=input.readLine();
+					String[] header=input.readLine().split("	");
+					int[] ii=new int[header_label.length];
+					for (int i=0;i<header_label.length;i++){
+						ii[i]=index(header_label[i],header);
+					}
+					
+					
 					String s="";
 					while((s=input.readLine())!=null){
 						String[] t=s.split("	");
 						Gene gene=new Gene();
-						gene.name=symbol(t[0]);
-						gene.cov=Double.parseDouble(t[1]);
-						gene.cov_syn=Double.parseDouble(t[2]);
-						gene.count=Integer.parseInt(t[3]);
-						gene.count_syn=Integer.parseInt(t[4]);
-						gene.sign_vector_syn=Double.parseDouble(t[5]);
-						gene.sign_hotspot_syn=Double.parseDouble(t[6]);
-						gene.sign_complete_syn=Double.parseDouble(t[7]);
-						gene.sign_vector=Double.parseDouble(t[8]);
-						gene.sign_cbase=Double.parseDouble(t[9]);
-						gene.sign_combined=Double.parseDouble(t[10]);
-						gene.sign_destruct=Double.parseDouble(t[11]);
-						gene.sign_hotspot=Double.parseDouble(t[12]);
-						gene.sign_complete=Double.parseDouble(t[13]);
-						gene.fdr_syn=Double.parseDouble(t[14]);
-						gene.fdr=Double.parseDouble(t[15]);
+						gene.name=symbol(t[ii[0]]);
+						gene.cov=Double.parseDouble(t[ii[1]]);
+						gene.cov_syn=Double.parseDouble(t[ii[2]]);
+						gene.count=Integer.parseInt(t[ii[3]]);
+						gene.count_syn=Integer.parseInt(t[ii[4]]);
+						gene.sign_complete_syn=Double.parseDouble(t[ii[5]]);
+						gene.fdr_syn=Double.parseDouble(t[ii[6]]);
+						gene.sign_complete=Double.parseDouble(t[ii[7]]);
+						gene.fdr=Double.parseDouble(t[ii[8]]);
 						
 						//masking genes for which the synonymous (!!!) mutations diverge from the background distribution
 						//if this occurs concordant deviation of the nonsynonymous mutations from the background distribution
@@ -242,11 +246,12 @@ public class Filter_Step3 {
 					
 					FileWriter out=new FileWriter(file_out[l]+entities[k]+".txt");
 					BufferedWriter output= new BufferedWriter(out);
-					output.write("gene	target_n	target_s	count_n	count_s	p_seq	p_dm	p_cum	p	q");
+					//output.write("gene	target_n	target_s	count_n	count_s	p_seq	p_dm	p_cum	p	q");
+					output.write("Name	TargetSize	TargetSizeSyn	Count	CountSyn	Significance	FDR");
 					output.newLine();
 					for (int i=0;i<genes.size();i++){
 						if(genes.get(i).pass){//only output the genes that passed the filter
-							output.write(genes.get(i).name+"	"+genes.get(i).cov+"	"+genes.get(i).cov_syn+"	"+genes.get(i).count+"	"+genes.get(i).count_syn+"	"+genes.get(i).sign_combined+"	"+genes.get(i).sign_destruct+"	"+genes.get(i).sign_hotspot+"	"+genes.get(i).sign_complete+"	"+genes.get(i).fdr);
+							output.write(genes.get(i).name+"	"+genes.get(i).cov+"	"+genes.get(i).cov_syn+"	"+genes.get(i).count+"	"+genes.get(i).count_syn+"	"+genes.get(i).sign_complete+"	"+genes.get(i).fdr);
 							output.newLine();
 						}
 						
@@ -285,6 +290,14 @@ public class Filter_Step3 {
 		return indices;
 	}
 	
+	public static int index(String s, String[] t){
+		for (int i=0;i<t.length;i++){
+			if(t[i].equals(s)){
+				return i;
+			}
+		}
+		return -1;
+	}
 	
 	public static int index(String s, ArrayList<String> t){
 		for (int i=0;i<t.size();i++){
@@ -326,14 +339,7 @@ public class Filter_Step3 {
 		int count=0;
 		int count_syn=0;
 		
-		double sign_vector=1;
-		double sign_cbase=1;
-		double sign_combined=1;
-		double sign_destruct=1;
-		double sign_hotspot=1;
 		double sign_complete=1;
-		double sign_vector_syn=1;
-		double sign_hotspot_syn=1;
 		double sign_complete_syn=1;
 		
 		double fdr=1;

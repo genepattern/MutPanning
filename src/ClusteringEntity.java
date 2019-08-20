@@ -1,18 +1,14 @@
 /************************************************************           
- * MutPanning - Step 4									*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
  * Summary: This script clusters the count vectors 			*
- *			separately for each cancer entity. Note that	*
- *			as the distance metrics are time-intensive to 	*
- *			compute the initial calculation of the distance	*
- *			metrics and its update are distributed across	*
- *			30 CPUs in order to accelarate this process.	*
+ *			separately for each cancer entity. 				*
  * 															*   
  *************************************************************/
 
@@ -38,18 +34,17 @@ public class ClusteringEntity {
 	static String file_samples="";
 	static String file_reference="";
 	static String file_out="";
-	static int n_processor=0;
 	
-	static double[][] distance_type=new double[0][0];
-	static double[][] distance_context=new double[0][0];
-	static ArrayList<String> names_type=new ArrayList<String>();
-	static ArrayList<int[]> type=new ArrayList<int[]>();
-	static ArrayList<int[][][]> affinity=new ArrayList<int[][][]>();
-	static ArrayList<ArrayList<Integer>> cluster_context=new ArrayList<ArrayList<Integer>>();
-	static ArrayList<ArrayList<Integer>> cluster_type=new ArrayList<ArrayList<Integer>>();
+	//static double[][] distance_type=new double[0][0];
+	//static double[][] distance_context=new double[0][0];
+	//static ArrayList<String> names_type=new ArrayList<String>();
+	//static ArrayList<int[]> type=new ArrayList<int[]>();
+	//static ArrayList<int[][][]> affinity=new ArrayList<int[][][]>();
+	//static ArrayList<ArrayList<Integer>> cluster_context=new ArrayList<ArrayList<Integer>>();
+	//static ArrayList<ArrayList<Integer>> cluster_type=new ArrayList<ArrayList<Integer>>();
 	
-	static double[] vector_context=new double[0];
-	static double[] vector_type=new double[0];
+	//static double[] vector_context=new double[0];
+	//static double[] vector_type=new double[0];
 	static double[][][] ref=new double[20][2][4];
 	static String[] index_header_samples={"ID","Sample","Cohort"};
 	
@@ -61,16 +56,14 @@ public class ClusteringEntity {
 	 * argument0: root file
 	 * argument1: sample annotaiton file
 	 * argument2: no. processors to distribute workload
-	* argument3: path to the Hg19 folder
 	 */
 	
 	public static void main(String[] args){
 		
-		n_processor=Integer.parseInt(args[2]);
 		file_type=args[0]+"AffinityCounts/TypeCount.txt";//"C:\\Users\\Administrator/Dropbox/AffinityCounts/CosmicCount.txt";
 		file_affinity=args[0]+"AffinityCounts/AffinityCount.txt";//"C:\\Users\\Administrator/Dropbox/AffinityCounts/AffinityCount.txt";
 		file_samples=args[1];
-		file_reference=args[3]+"FileReferenceCount.txt";
+		file_reference=args[2]+"FileReferenceCount.txt";
 		file_out=args[0]+"Clustering/";
 		
 		if(!new File(file_out).exists()){
@@ -151,21 +144,26 @@ public class ClusteringEntity {
 				}
 			}
 			
+			/*
+			for (int i=0;i<ref.length;i++){
+				for (int j=0;j<ref[i].length;j++){
+					System.out.println(ref[i][j][0]+"	"+ref[i][j][1]+"	"+ref[i][j][2]+"	"+ref[i][j][3]);
+				}
+			}
+			System.exit(0);
+			*/
+			
 			//for every entity clustering is first performed separately. clusters are merged
 			//between entities later. as running time is n*n this safes a lot of time  
 			for (int aa=0;aa<entities.length;aa++){
 				System.out.println(entities[aa]);
 				//reset all the variables
-				distance_type=new double[0][0];
-				distance_context=new double[0][0];
-				names_type=new ArrayList<String>();
-				type=new ArrayList<int[]>();
-				affinity=new ArrayList<int[][][]>();
-				cluster_context=new ArrayList<ArrayList<Integer>>();
-				cluster_type=new ArrayList<ArrayList<Integer>>();
+				ArrayList<String> names_type=new ArrayList<String>();
+				ArrayList<int[]> type=new ArrayList<int[]>();
+				ArrayList<int[][][]> affinity=new ArrayList<int[][][]>();
 				
-				vector_context=new double[0];
-				vector_type=new double[0];
+				//vector_context=new double[0];
+				//vector_type=new double[0];
 				
 				
 				
@@ -227,14 +225,39 @@ public class ClusteringEntity {
 				input.close();
 				input2.close();
 				
-				distance_type=new double[type.size()][type.size()];
-				distance_context=new double[affinity.size()][affinity.size()];
+				
+				double[][] distance_type=initialize_type(type);//new double[0][0];
+				double[][] distance_context=initialize_context(affinity);//new double[0][0];
+				
+				/*
+				for (int i=0;i<distance_type.length;i++){
+					for (int j=0;j<distance_type[i].length;j++){
+						System.out.print("	"+distance_type[i][j]);
+					}
+					System.out.println();
+				}*/
+				//System.exit(0);
+				
+				/*
+				for (int i=0;i<distance_context.length;i++){
+					for (int j=0;j<distance_context[i].length;j++){
+						System.out.print("	"+distance_context[i][j]);
+					}
+					System.out.println();
+				}
+				System.exit(0);
+				*/
+				
+				//distance_type=new double[type.size()][type.size()];
+				//distance_context=new double[affinity.size()][affinity.size()];
 				
 				//compute the initial nxn distance metrics. this is a very compute intensive step
 				// so that this computation step is performed in parallel 
-				initialize();
-			
 				
+				
+				//initialize();
+			
+
 				//transform static matrix into a flexible ArrayList, which allows more flexible
 				// rearrangements and deletions throughout clustering
 				ArrayList<ArrayList<Double>> dist_type=new ArrayList<ArrayList<Double>>();
@@ -244,6 +267,7 @@ public class ClusteringEntity {
 						dist_type.get(i).add(distance_type[i][j]);
 					}
 				}
+
 				
 				ArrayList<ArrayList<Double>> dist_context=new ArrayList<ArrayList<Double>>();
 				for (int i=0;i<distance_context.length;i++){
@@ -252,11 +276,15 @@ public class ClusteringEntity {
 						dist_context.get(i).add(distance_context[i][j]);
 					}
 				}
+
 				
+				ArrayList<ArrayList<Integer>> cluster_type=new ArrayList<ArrayList<Integer>>();
+				ArrayList<int[]> cluster_type_sum=new ArrayList<int[]>();
 				for (int i=0;i<type.size();i++){
 					ArrayList<Integer> c=new ArrayList<Integer>();
 					c.add(i);
 					cluster_type.add(c);
+					cluster_type_sum.add(clone(type.get(i)));
 				}
 				
 				
@@ -282,42 +310,60 @@ public class ClusteringEntity {
 						break;
 					}
 					
-					ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
-					combi_cluster.addAll(cluster_type.get(i_max));
-					combi_cluster.addAll(cluster_type.get(j_max));
+					cluster_type.get(i_max).addAll(cluster_type.get(j_max));
+					cluster_type.remove(j_max);
+					int[] x=new int[cluster_type_sum.get(i_max).length];
+					for (int j=0;j<cluster_type_sum.get(i_max).length;j++){
+						x[j]=cluster_type_sum.get(i_max)[j]+cluster_type_sum.get(j_max)[j];
+					}
+					cluster_type_sum.set(i_max, x);
+					cluster_type_sum.remove(j_max);
+					
+					dist_type.remove(j_max);
+					for (int i=0;i<dist_type.size();i++){
+						dist_type.get(i).remove(j_max);
+					}
+					//ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
+					//combi_cluster.addAll(cluster_type.get(i_max));
+					//combi_cluster.addAll(cluster_type.get(j_max));
 					for (int i=0;i<dist_type.size();i++){
 						if(i==i_max){
 							dist_type.get(i).set(i_max,0.0);
 							dist_type.get(i_max).set(i,0.0);
 						}
 						else{
-							dist_type.get(i).set(i_max,distance_type(cluster_type.get(i),combi_cluster));
-							dist_type.get(i_max).set(i,distance_type(cluster_type.get(i),combi_cluster));
+							double d=distance_type(cluster_type_sum.get(i),cluster_type_sum.get(i_max));
+							dist_type.get(i).set(i_max,d);
+							dist_type.get(i_max).set(i,d);
+							//dist_type.get(i).set(i_max,distance_type(cluster_type.get(i),combi_cluster));
+							//dist_type.get(i_max).set(i,distance_type(cluster_type.get(i),combi_cluster));
 						}
 						
 					}
-					dist_type.remove(j_max);
-					for (int i=0;i<dist_type.size();i++){
-						dist_type.get(i).remove(j_max);
-					}
-					
-					cluster_type.get(i_max).addAll(cluster_type.get(j_max));
-					cluster_type.remove(j_max);
 				}
 				
-				for (int i=0;i<type.size();i++){
+				
+				
+				ArrayList<ArrayList<Integer>> cluster_context=new ArrayList<ArrayList<Integer>>();
+				ArrayList<int[][][]> cluster_context_sum=new ArrayList<int[][][]>();
+				for (int i=0;i<affinity.size();i++){
 					ArrayList<Integer> c=new ArrayList<Integer>();
 					c.add(i);
 					cluster_context.add(c);
+					cluster_context_sum.add(clone(affinity.get(i)));
 				}
 				
 				
 				//hierarchial clustering in a similar manner to the previous loop for the context-dependent count vectors
 				//note that the update is performed on 30CPUs in parallel to speed up the process 
+				
+				//System.out.println(entities[aa]);
 				while(cluster_context.size()>0){
 					int i_max=-1;
 					int j_max=-1;
 					double max=0;
+					
+					long t1=System.currentTimeMillis();
 					for (int i=0;i<cluster_context.size();i++){
 						for (int j=i+1;j<cluster_context.size();j++){
 							if(dist_context.get(i).get(j)>max){
@@ -327,18 +373,59 @@ public class ClusteringEntity {
 							}
 						}
 					}
+					long t2=System.currentTimeMillis();
 					if(i_max==-1||j_max==-1){
 						break;
 					}
 					//System.out.println("context	"+cluster_context.size()+"	"+max);
 					
+					cluster_context.get(i_max).addAll(cluster_context.get(j_max));
+					cluster_context.remove(j_max);
+					int[][][] x=new int[cluster_context_sum.get(i_max).length][cluster_context_sum.get(i_max)[0].length][cluster_context_sum.get(i_max)[0][0].length];
+					for (int j1=0;j1<cluster_context_sum.get(i_max).length;j1++){
+						for (int j2=0;j2<cluster_context_sum.get(i_max)[j1].length;j2++){
+							for (int j3=0;j3<cluster_context_sum.get(i_max)[j1][j2].length;j3++){
+								x[j1][j2][j3]=cluster_context_sum.get(i_max)[j1][j2][j3]+cluster_context_sum.get(j_max)[j1][j2][j3];
+							}
+						}
+					}
+					cluster_context_sum.set(i_max, x);
+					cluster_context_sum.remove(j_max);
+					
+					dist_context.remove(j_max);
+					for (int i=0;i<dist_context.size();i++){
+						dist_context.get(i).remove(j_max);
+					}
+					//ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
+					//combi_cluster.addAll(cluster_type.get(i_max));
+					//combi_cluster.addAll(cluster_type.get(j_max));
+					for (int i=0;i<dist_context.size();i++){
+						if(i==i_max){
+							dist_context.get(i).set(i_max,0.0);
+							dist_context.get(i_max).set(i,0.0);
+						}
+						else{
+							double d=distance_context(cluster_context_sum.get(i),cluster_context_sum.get(i_max));
+							dist_context.get(i).set(i_max,d);
+							dist_context.get(i_max).set(i,d);
+							//dist_type.get(i).set(i_max,distance_type(cluster_type.get(i),combi_cluster));
+							//dist_type.get(i_max).set(i,distance_type(cluster_type.get(i),combi_cluster));
+						}
+					}
+					
+					/*
+					for (int i=0;i<cluster_context.size();i++){
+						vector_context[i]=distance_context(sum2(affinity,cluster_context.get(i)),sum_combi_cluster);
+					}
+					
 					
 					ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
 					combi_cluster.addAll(cluster_context.get(i_max));
 					combi_cluster.addAll(cluster_context.get(j_max));
-					
+					long t3=System.currentTimeMillis();
 					
 					distance_context(combi_cluster);
+					long t4=System.currentTimeMillis();
 					for (int i=0;i<dist_context.size();i++){
 						if(i==i_max){
 							dist_context.get(i).set(i_max,0.0);
@@ -351,13 +438,20 @@ public class ClusteringEntity {
 						
 					}
 					dist_context.remove(j_max);
+					long t5=System.currentTimeMillis();
 					for (int i=0;i<dist_context.size();i++){
 						dist_context.get(i).remove(j_max);
 					}
 					
 					cluster_context.get(i_max).addAll(cluster_context.get(j_max));
 					cluster_context.remove(j_max);
+					long t6=System.currentTimeMillis();
+					
+					System.out.println(cluster_context.size()+"	"+System.currentTimeMillis()+"	"+(t2-t1)+"	"+(t3-t2)+"	"+(t4-t3)+"	"+(t5-t4)+"	"+(t6-t5));
+					*/
 				}
+				
+				
 				
 				int[][] count=new int[cluster_type.size()][cluster_context.size()];
 				for (int i=0;i<cluster_type.size();i++){
@@ -404,8 +498,10 @@ public class ClusteringEntity {
 					output.newLine();
 				}
 				output.close();
+				
+				
 			}
-			
+			//System.out.println(n1+"	"+n2+"	"+n3);
 			
 			
 		}
@@ -451,6 +547,26 @@ public class ClusteringEntity {
 		return b;
 	}*/
 	
+	public static int[] clone(int[] x){
+		int[] y=new int[x.length];
+		for (int i=0;i<x.length;i++){
+			y[i]=x[i];
+		}
+		return y;
+	}
+	
+	public static int[][][] clone(int[][][] x){
+		int[][][] y=new int[x.length][x[0].length][x[0][0].length];
+		for (int i=0;i<x.length;i++){
+			for (int j=0;j<x[i].length;j++){
+				for (int k=0;k<x[i][j].length;k++){
+					y[i][j][k]=x[i][j][k];
+				}
+			}
+		}
+		return y;
+	}
+	
 	public static int[] index_header(String[] header, String[] ideal_header){
 		int[] indices=new int[ideal_header.length];
 		for (int i=0;i<ideal_header.length;i++){
@@ -485,6 +601,7 @@ public class ClusteringEntity {
 			return gamma[(int)(z*10)];
 		}
 		else{
+			//System.out.println("warning "+z);
 			return 0.5*Math.log(2*Math.PI)+(z-0.5)*Math.log(z)-z;
 		}
 	}
@@ -517,74 +634,33 @@ public class ClusteringEntity {
 	
 	//updating the distance matrix in each step of the hierarchical clustering
 	//distributing the load on n cpus
-	static void distance_context(ArrayList<Integer> combi_cluster){
+	
+	/*
+	public static void distance_context(ArrayList<Integer> combi_cluster){
 		//int n_processor=24;
+		int[][][] sum_combi_cluster=sum2(affinity,combi_cluster);
+		
 		vector_context=new double[cluster_context.size()];
-		
-		int a=cluster_context.size()/n_processor+1;
-		Subthread_Context[] threads=new Subthread_Context[n_processor];
-		for (int i=0;i<threads.length;i++){
-			threads[i]=new Subthread_Context();
-			threads[i].combi_cluster=combi_cluster;
-			threads[i].c_start=i*a;
-			threads[i].c_end=Math.min(cluster_context.size()-1, i*a+a-1);
-			threads[i].start();
+		for (int i=0;i<cluster_context.size();i++){
+			vector_context[i]=distance_context(sum2(affinity,cluster_context.get(i)),sum_combi_cluster);
 		}
 		
-		
-		try{
-			boolean all_done=false;
-			do{
-				all_done=true;
-				for (int i=0;i<threads.length;i++){
-					if(!threads[i].done){
-						all_done=false;
-						break;
-					}
-				}
-			}while(!all_done);
-		}
-		catch(Exception e){
-			System.out.println(e);
-		}
-	}
+	}*/
 	
 	
 	//updating the distance matrix in each step of the hierarchical clustering
 	//distributing the load on n cpus
-	static void distance_type(ArrayList<Integer> combi_cluster){
+	/*
+	public static void distance_type(ArrayList<Integer> combi_cluster){
 		//int n_processor=24;
 		vector_type=new double[cluster_type.size()];
-		
-		int a=cluster_type.size()/n_processor+1;
-		Subthread_Type[] threads=new Subthread_Type[n_processor];
-		for (int i=0;i<threads.length;i++){
-			threads[i]=new Subthread_Type();
-			threads[i].combi_cluster=combi_cluster;
-			threads[i].c_start=i*a;
-			threads[i].c_end=Math.min(cluster_type.size()-1, i*a+a-1);
-			threads[i].start();
+		for (int i=0;i<cluster_type.size();i++){
+			vector_type[i]=distance_type(cluster_type.get(i),combi_cluster);
 		}
 		
-		
-		try{
-			boolean all_done=false;
-			do{
-				all_done=true;
-				for (int i=0;i<threads.length;i++){
-					if(!threads[i].done){
-						all_done=false;
-						break;
-					}
-				}
-			}while(!all_done);
-		}
-		catch(Exception e){
-			System.out.println(e);
-		}
-		
-	}
 	
+	}
+	*/
 	
 	public static int index(int a , ArrayList<ArrayList<Integer>> c){
 		for (int i=0;i<c.size();i++){
@@ -617,11 +693,56 @@ public class ClusteringEntity {
 	}
 	
 	
+	public static double[][] initialize_type(ArrayList<int[]> type){
+		
+		double[][] distance_type=new double[type.size()][type.size()];
+		for (int c=0;c<distance_type.length;c++){
+			for (int i=0;i<distance_type[c].length;i++){
+				if(i==c){
+					distance_type[c][i]=0;
+				}
+				else if(c<i){
+					distance_type[c][i]=distance_type(type.get(c),type.get(i));//,sum[c],sum[i]
+					//nn++;
+				}
+				else{
+					distance_type[c][i]=distance_type[i][c];
+				}
+			}
+		}
+		return distance_type;
+	}
+	
+	
+	public static double[][] initialize_context(ArrayList<int[][][]> affinity){
+				
+		double[][] distance_context=new double[affinity.size()][affinity.size()];
+		for (int c=0;c<distance_context.length;c++){
+			for (int i=0;i<distance_context[c].length;i++){
+				if(i==c){
+					distance_context[c][i]=0;
+				}
+				else if(c<i){
+					distance_context[c][i]=distance_context(affinity.get(c),affinity.get(i));
+					//System.out.println(distance_context(affinity.get(c),affinity.get(i)));
+					//nn++;
+				}
+				else{
+					distance_context[c][i]=distance_context[i][c];
+				
+				}
+			}
+		}
+		return distance_context;
+	
+	}
+	
+	/*
 	//the time-critical is to initalize the computation of the initial distance metrics
 	//to save some time this method equally distributes this on 30 CPUs. each Subthread 
 	//instance is responsible to compute 1 row in the matrix. as soon as it is done it returns
 	// and the cpu is loaded with another instance
-	public static void initialize(){
+	public static void initializeX(){
 		Subthread[] threads=new Subthread[distance_type.length];
 		for (int i=0;i<threads.length;i++){
 			threads[i]=new Subthread();
@@ -673,8 +794,11 @@ public class ClusteringEntity {
 		}
 		
 	}
+	*/
 	
 	//Computes 1 row for the initial type-distance matrix
+	
+	/*
 	private static class Subthread_Type extends Thread{
 		int c_start=-1;
 		int c_end=-1;
@@ -690,8 +814,10 @@ public class ClusteringEntity {
 			done=true;
 		}
 		
-	}
+	}*/
 
+	
+	/*
 	//computes 1 row for the initial context-distance matrix
 	private static class Subthread_Context extends Thread{
 		int c_start=-1;
@@ -707,9 +833,9 @@ public class ClusteringEntity {
 			}
 			done=true;
 		}
-	}
+	}*/
 	
-	
+	/*
 	//compbines 
 	private static class Subthread extends Thread{
 		int c=-1;
@@ -729,6 +855,7 @@ public class ClusteringEntity {
 			done=true;
 		}
 	}
+	*/
 	public static int sum (int[] a){
 		int sum=0;
 		for (int i=0;i<a.length;i++){
@@ -747,6 +874,7 @@ public class ClusteringEntity {
 		
 	}
 	
+	/*
 	public static double distance_type(ArrayList<Integer> cluster1, ArrayList<Integer> cluster2){
 		return distance_type(sum(type,cluster1), sum(type,cluster2));
 	}
@@ -755,6 +883,7 @@ public class ClusteringEntity {
 		//return distance_context(sum(cosmic,cluster1), sum(cosmic,cluster2));
 		//TODO
 	}
+	*/
 	
 	public static int[] sum(ArrayList<int[]> type, ArrayList<Integer> cluster){
 		int[] sum=new int[type.get(0).length];
@@ -781,18 +910,51 @@ public class ClusteringEntity {
 	}
 	
 	
+	/*
+	public static double distance_type(int[] vv, int[]ww, int sum_vv, int sum_ww){
+		
+		//double a=(double)(Math.min(sum(vv),sum(ww)))/(double)(vv.length);//(double)(sum(vv)+sum(ww))/(double)(vv.length);
+		double a=(double)(Math.min(sum_vv,sum_ww))/(double)(vv.length);//(double)(sum(vv)+sum(ww))/(double)(vv.length);
+		//double[] xx=new double[vv.length];
+		//for (int i=0;i<vv.length;i++){
+		//	xx[i]=a;
+		//}
+		
+		return log_ratio(vv,ww,a, sum_vv, sum_ww);
+	}*/
 	
 	public static double distance_type(int[] vv, int[]ww){
 		
 		double a=(double)(Math.min(sum(vv),sum(ww)))/(double)(vv.length);//(double)(sum(vv)+sum(ww))/(double)(vv.length);
-		//a=Math.sqrt(a);
+		//double a=(double)(Math.min(sum_vv,sum_ww))/(double)(vv.length);//(double)(sum(vv)+sum(ww))/(double)(vv.length);
 		double[] xx=new double[vv.length];
 		for (int i=0;i<vv.length;i++){
 			xx[i]=a;
 		}
-		double sum1=log_ratio(vv,ww,xx);
-		return sum1;
+		
+		return log_ratio(vv,ww,xx);
 	}
+	
+	/*
+	public static double distance_context(int[][][] v, int[][][] w){//(int[] v, int[] w){//
+		double sum2=0;
+		for (int i=10-5;i<=9+5;i++){
+			for (int j=0;j<6;j++){
+				double a=(double)(Math.min(sum(v[i][j]),sum(w[i][j])));
+				//a=Math.sqrt(a);
+				double[] z=new double[4];
+				for (int k=0;k<4;k++){
+					//System.out.println(i+","+j+","+k);
+					z[k]=a*ref[i][j/3][k];
+				}
+				if(sum(v[i][j])>0&&sum(w[i][j])>0){
+					sum2+=log_ratio(v[i][j],w[i][j],z);
+				}
+			
+			}
+		}
+		return sum2;
+	}*/
 	
 	
 	public static double distance_context(int[][][] v, int[][][] w){//(int[] v, int[] w){//
@@ -814,6 +976,46 @@ public class ClusteringEntity {
 		}
 		return sum2;
 	}
+	
+//	public static double distance_context(int[][][] v, int[][][] w){//(int[] v, int[] w){//
+//		double sum=0;
+//		for (int i=10-5;i<=9+5;i++){
+//			for (int j=0;j<6;j++){
+//				double a=(double)(Math.min(sum(v[i][j]),sum(w[i][j])));
+//				if(sum(v[i][j])>0&&sum(w[i][j])>0){
+//					sum-=log_ratio(sum(v[i][j]),sum(w[i][j]),a);
+//					//System.out.println(sum(v[i][j])+"	"+sum(w[i][j])+"	"+a+"	"+log_ratio(sum(v[i][j]),sum(w[i][j]),a));
+//					for (int k=0;k<4;k++){
+//						if(v[i][j][k]>0&&w[i][j][k]>0){
+//							//System.out.println(log_ratio(v[i][j][k],w[i][j][k],a*ref[i][j/3][k]));
+//							sum+=log_ratio(v[i][j][k],w[i][j][k],a*ref[i][j/3][k]);
+//							//ddd
+//						}
+//					}
+//				}
+//				
+//			}
+//		}
+//		return sum;
+//		
+//		/*
+//		double sum2=0;
+//		for (int i=10-5;i<=9+5;i++){
+//			for (int j=0;j<6;j++){
+//				double a=(double)(Math.min(sum(v[i][j]),sum(w[i][j])));
+//				double[] z=new double[4];
+//				for (int k=0;k<4;k++){
+//					z[k]=a*ref[i][j/3][k];
+//				}
+//				if(sum(v[i][j])>0&&sum(w[i][j])>0){
+//					sum2+=log_ratio(v[i][j],w[i][j],z);
+//				}
+//			
+//			}
+//		}
+//		return sum2;*/
+//	}
+	
 	
 	/*
 	public static double distance_context(int[] v, int[] w){
@@ -896,12 +1098,57 @@ public class ClusteringEntity {
 		
 		//System.out.println(sum(v)+"	"+sum(w)+"	"+sum(x)+"	"+log_ratio(sum(v),sum(w),sum(x)));
 		for (int i=0;i<v.length;i++){
-			ratio+=log_ratio(v[i],w[i],x[i]);
+			if(v[i]>0&&w[i]>0){
+				ratio+=log_ratio(v[i],w[i],x[i]);
+				
+			}
 			//System.out.println(v[i]+"	"+w[i]+"	"+x[i]+"	"+log_ratio(v[i],w[i],x[i]));
 		}
 		return ratio;
 	}
+	
+	/*
+	public static double log_ratio(int[] v, int[] w, double a, int sum_v, int sum_w){
+		
+		double ratio=-log_ratio(sum_v,sum_w,v.length*a);//sum(x)
+		
+		for (int i=0;i<v.length;i++){
+			ratio+=log_ratio(v[i],w[i],a);
+		}
+		return ratio;
+	}
+	*/
+	
+//	static int n1=0;
+//	static int n2=0;
+//	static int n3=0;
 	public static double log_ratio(int v, int w, double x){
+		/*
+		if(v==0||w==0){
+			n1++;
+		}
+		else if(v==1||w==1){
+			n2++;
+		}
+		else{
+			n3++;
+		}*/
+		//System.out.println(v+"	"+w+"	"+x);
+		//System.out.println(logGamma(w+x)+"	"+Gamma.logGamma(w+x));
+		/*
+		if(v==0||w==0){
+			//System.out.println(0+"	"+(logGamma(v+w+x)+logGamma(x)-logGamma(w+x)-logGamma(v+x)));
+			return 0;
+		}
+		if(v==1){
+			//System.out.println(Math.log(w+x)-Math.log(x)+"	"+(logGamma(v+w+x)+logGamma(x)-logGamma(w+x)-logGamma(v+x)));
+			return Math.log(w+x)-Math.log(x);
+		}
+		if(v==1){
+			//System.out.println(Math.log(v+x)-Math.log(x)+"	"+(logGamma(v+w+x)+logGamma(x)-logGamma(w+x)-logGamma(v+x)));
+			return Math.log(v+x)-Math.log(x);
+		}
+		*/
 		return logGamma(v+w+x)+logGamma(x)-logGamma(w+x)-logGamma(v+x);
 	}
 }

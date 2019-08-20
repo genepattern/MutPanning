@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 9										*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -11,7 +11,7 @@
  * the mutation counts of the previous steps which were		*
  * generated in each chr separately into a single file and	*
  * separately for syn and nonsynonymous counts, as needed	*
- * for the CBASE scripts									*
+ * for the CBASE model										*
  *************************************************************/
 
 import java.io.BufferedReader;
@@ -23,6 +23,7 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Hashtable;
 
 
 public class ReformatCBASE{
@@ -42,6 +43,33 @@ public class ReformatCBASE{
 	static String file_out1="";
 	static String file_out2="";
 	static String file_out3="";
+	
+	static int[] chr_length={
+			249250621,
+			243199373,
+			198022430,
+			191154276,
+			180915260,
+			171115067,
+			159138663,
+			146364022,
+			141213431,
+			135534747,
+			135006516,
+			133851895,
+			115169878,
+			107349540,
+			102531392,
+			90354753,
+			81195210,
+			78077248,
+			59128983,
+			63025520,
+			48129895,
+			51304566,
+			155270560,
+			59373566
+		};
 	
 	
 	static String[] exclude={
@@ -69,7 +97,6 @@ public class ReformatCBASE{
 	 * argument0: root file 
 	 * argument1: maf file
 	 * argument2: sample count file
-	* argument3: path to the Hg19 folder
 	 */
 	public static void main(String[] args){
 		
@@ -144,6 +171,31 @@ public class ReformatCBASE{
 			}
 			input.close();
 			
+			ArrayList<Integer>[][] index_gene=new ArrayList[chr.length][];
+			for (int i=0;i<chr.length;i++){
+				index_gene[i]=new ArrayList[1+chr_length[i]/10000];
+				for (int j=0;j<index_gene[i].length;j++){
+					index_gene[i][j]=new ArrayList<Integer>();
+				}
+			}
+			
+			for (int i=0;i<genes_chr.length;i++){
+				for (int j=0;j<genes_chr[i].size();j++){
+					ArrayList<Integer> indices=new ArrayList<Integer>();
+					for (int k=0;k<genes_chr[i].get(j).coord.size();k++){
+						for (int p=genes_chr[i].get(j).coord.get(k)[0]/10000;p<=genes_chr[i].get(j).coord.get(k)[1]/10000;p++){
+							if(!contains(p,indices)){
+								indices.add(p);
+							}
+							
+						}
+					}
+					for (int k=0;k<indices.size();k++){
+						index_gene[i][indices.get(k)].add(j);
+					}
+				}
+			}
+			
 			
 			//initializie counters for the different categories
 			 
@@ -186,20 +238,25 @@ public class ReformatCBASE{
 				}
 			}
 			
-			ArrayList<String>[] list=new ArrayList[entity_name.length-1];
-			for (int i=0;i<list.length;i++){
-				list[i]=new ArrayList<String>();
-			}	
+			
+			Hashtable<String,Integer> table_entity=new Hashtable<String,Integer>();
+			//ArrayList<String>[] list=new ArrayList[entity_name.length-1];
+			//for (int i=0;i<list.length;i++){
+			//	list[i]=new ArrayList<String>();
+			//}	
 			in=new FileInputStream(file_samples);
 			inn=new DataInputStream(in);
 			input= new BufferedReader(new InputStreamReader(inn));
 			int[] index_header=index_header(input.readLine().split("	"),index_header_samples);
 			while((s=input.readLine())!=null){
 				String[] t=s.split("	");
-				list[index(t[index_header[2]],entity_name)].add(t[index_header[1]]);
+				table_entity.put(t[index_header[1]],index(t[index_header[2]],entity_name));
+				
+				//list[index(t[index_header[2]],entity_name)].add(t[index_header[1]]);
 			}
 			input.close();
 			
+			System.out.println("XXXX");
 			//check counts from previous step against the counts in the maf file 
 			//(eg. some counts in the intron exon boarder might not have been part
 			//of the exon sequence but still be helpful to detected hypermutant genes
@@ -224,8 +281,8 @@ public class ReformatCBASE{
 				if(chr_index==-1){
 					continue;
 				}
-				int sample_index=index(t[index_header_m[10]],list);
-				ArrayList<Integer> gene_index=index(Integer.parseInt(t[index_header_m[2]]),genes_chr[chr_index]);
+				int sample_index=table_entity.get(t[index_header_m[10]]);//index(t[index_header_m[10]],list);
+				ArrayList<Integer> gene_index=index(Integer.parseInt(t[index_header_m[2]]),genes_chr[chr_index],index_gene[chr_index][Integer.parseInt(t[index_header_m[2]])/10000]);
 				for (int i=0;i<gene_index.size();i++){
 					count_maf[chr_index][gene_index.get(i)][sample_index]++;
 					count_maf[chr_index][gene_index.get(i)][entity_name.length-1]++;
@@ -234,7 +291,7 @@ public class ReformatCBASE{
 				
 			}
 			input.close();
-			
+			System.out.println("XXXX");
 			
 			//add counts that were missed in the exon sequence
 			for (int i=0;i<count.length;i++){
@@ -308,6 +365,15 @@ public class ReformatCBASE{
 		}
 	}
 	
+	public static boolean contains(int x, ArrayList<Integer> y){
+		for (int i=0;i<y.size();i++){
+			if(y.get(i)==x){
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	public static int[] index_header(String[] header, String[] ideal_header){
 		int[] indices=new int[ideal_header.length];
 		for (int i=0;i<ideal_header.length;i++){
@@ -323,9 +389,11 @@ public class ReformatCBASE{
 		return indices;
 	}
 	
-	public static ArrayList<Integer> index(int pos,ArrayList<Gene> genes){
+	public static ArrayList<Integer> index(int pos,ArrayList<Gene> genes, ArrayList<Integer> z){
 		ArrayList<Integer> index=new ArrayList<Integer>();
-		for (int i=0;i<genes.size();i++){
+		for(int ii=0;ii<z.size();ii++){
+		//for (int i=0;i<genes.size();i++){
+			int i=z.get(ii);
 			if(genes.get(i).contains(pos)){
 				index.add(i);
 			}

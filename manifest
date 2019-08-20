@@ -5,10 +5,10 @@ LSID=urn\:lsid\:broad.mit.edu\:cancer.software.genepattern.module.analysis\:0038
 author=Ted Liefeld, UCSD School of Medicine.
 categories=Tutorial
 
-commandLine=/mutpanning/run-mutpanning-module.sh <env.MUTPANNING_MAX_SAMPLES> <job.memory> <maf.file>  <sample.annotation.file>  <min.samples.per.cluster>  <min.mutations.per.cluster> 32  <min.cbase.samples> <min.cbase.mutations>  /mutpanning/src/ComputeDistribution.py  /mutpanning/Hg19/
+commandLine=/mutpanning/run-mutpanning-module.sh <job.memory> /mutpanning_temp <maf.file>  <sample.annotation.file> /mutpanning  <min.samples.per.cluster>  <min.mutations.per.cluster>  <min.cbase.samples> <min.cbase.mutations>
 
 cpuType=any
-job.memory=62 Gb
+job.memory=10G
 
 description=MutPanning description goes here
 fileFormat=maf
@@ -16,7 +16,7 @@ language=any
 minGenePatternVersion=3.9.13
 name=MutPanning
 os=any
-job.docker.image=genepattern/docker-mutpanning:v0.7
+job.docker.image=genepattern/docker-mutpanning:jtl
 p1_MODE=IN
 p1_TYPE=FILE
 p1_default_value=

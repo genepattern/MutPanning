@@ -19,14 +19,17 @@
 DATA_DIR=/Users/liefeld/GenePattern/gp_dev/docker/docker-mutpanning/mutpanning_testfiles/Melanoma/
 N_CPU=4
 
-COMMAND_LINE="java -Xmx2G -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning /mutpanning/ $DATA_DIR/MutationsMelanoma.maf $DATA_DIR/SamplesMelanoma.txt 3  1000 $N_CPU 100 5000 /mutpanning/src/ComputeDistribution.py /mutpanning/Hg19/"
+#COMMAND_LINE="java -Xmx2G -cp /mutpanning/bin/commons-math3-3.6.1.jar:/mutpanning/bin/jdistlib-0.4.5-bin.jar:/mutpanning/bin MutPanning /mutpanning/ $DATA_DIR/MutationsMelanoma.maf $DATA_DIR/SamplesMelanoma.txt 3  1000 $N_CPU 100 5000 /mutpanning/src/ComputeDistribution.py /mutpanning/Hg19/"
 
+COMMAND_LINE="/mutpanning/run-mutpanning-module.sh \'3 G\' /mutpanning_temp  $DATA_DIR/MutationsMelanoma.maf $DATA_DIR/SamplesMelanoma.txt /mutpanning_hg19/Hg19/  3 1000 100 5000"
+PARAMS="/mutpanning_temp  $DATA_DIR/MutationsMelanoma.maf $DATA_DIR/SamplesMelanoma.txt /mutpanning_hg19/Hg19/  3 1000 100 5000"
+echo CL IS $COMMAND_LINE
 
 
 LOCAL_DIR=$PWD
 ROOT_DIR='/Users/liefeld/GenePattern/gp_dev/docker/docker-mutpanning'
 
-docker run -v $ROOT_DIR:$ROOT_DIR -w $LOCAL_DIR/Job_1 -t genepattern/docker-mutpanning:v0.7 $COMMAND_LINE
-
+#docker run -v $ROOT_DIR:$ROOT_DIR -w $LOCAL_DIR/Job_1 -t genepattern/docker-mutpanning:jtl $COMMAND_LINE
+docker run -v $ROOT_DIR:$ROOT_DIR -w $LOCAL_DIR/Job_1 -t genepattern/docker-mutpanning:jtl /mutpanning/run-mutpanning-module.sh '12 G' $PARAMS
 
 

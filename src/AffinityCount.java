@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 2									*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 public class AffinityCount {
-	
+	static String file_annotation="";
 	static String file_aligned="";
 	static String file_samples="";
 	static String file_out="";
@@ -46,6 +46,7 @@ public class AffinityCount {
 	 */
 	
 	public static void main(String[] args){
+		file_annotation=args[2]+"AnnotationHg19/Annotation_chr";
 		file_aligned=args[0]+"AlignHg19/AlignHg19Chr";
 		file_samples=args[1];
 		file_out=args[0]+"AffinityCounts/AffinityCount.txt";
@@ -74,25 +75,11 @@ public class AffinityCount {
 			no_samples=sample_list.size();
 			
 			//calculate the count vector for each chr separately
-			Subthread[] subthreads=new Subthread[chr.length];
-			for (int i=0;i<subthreads.length;i++){
-				subthreads[i]=new Subthread();
-				subthreads[i].chr=chr[i];
-				subthreads[i].start();
+			Count[] cc=new Count[chr.length];
+			for (int i=0;i<chr.length;i++){
+				cc[i]=count(chr[i]);
 			}
 			
-			//wait until the calculation is finished on each chr
-			boolean all_done=false;
-			do{
-				Thread.sleep(10000);
-				all_done=true;
-				for (int i=0;i<subthreads.length;i++){
-					if(!subthreads[i].done){
-						all_done=false;
-						break;
-					}
-				}
-			}while(!all_done);
 			
 			//sum up context count vector over chr
 			int[][][][] count =new int[no_samples][20][6][4];
@@ -100,8 +87,8 @@ public class AffinityCount {
 				for (int j=0;j<count[i].length;j++){
 					for (int k=0;k<count[i][j].length;k++){
 						for (int l=0;l<count[i][j][k].length;l++){
-							for (int m=0;m<subthreads.length;m++){
-								count[i][j][k][l]+=subthreads[m].count[i][j][k][l];
+							for (int m=0;m<chr.length;m++){
+								count[i][j][k][l]+=cc[m].count[i][j][k][l];
 							}
 						}
 					}
@@ -112,8 +99,8 @@ public class AffinityCount {
 			int[][] count_type =new int[no_samples][6];
 			for (int i=0;i<count_type.length;i++){
 				for (int j=0;j<count_type[i].length;j++){
-					for (int m=0;m<subthreads.length;m++){
-						count_type[i][j]+=subthreads[m].count_type[i][j];
+					for (int m=0;m<chr.length;m++){
+						count_type[i][j]+=cc[m].count_type[i][j];
 					}		
 				}
 			}
@@ -192,144 +179,153 @@ public class AffinityCount {
 	}
 	
 	//compute the count vector on an individual chr
-	private static class Subthread extends Thread{
-		String chr="";
-		int[][][][] count=new int[0][0][0][0];
-		int[][] count_type=new int[0][0];
-		volatile boolean done=false;
-		public void run(){
-			done=false;
-			count =new int[no_samples][20][6][4];
-			count_type =new int[no_samples][6];
-			try{
-				ArrayList<Integer> queue_pos=new ArrayList<Integer>();
-				ArrayList<String> queue_nucl=new ArrayList<String>();
-				ArrayList<String> queue_sample1=new ArrayList<String>();
-				ArrayList<String> queue_sample2=new ArrayList<String>();
-				ArrayList<String> queue_sample3=new ArrayList<String>();
-				
-				String s="";
-				
-				//go through the aligned file from Step 1 and add positions into a queue
-				FileInputStream in=new FileInputStream(file_aligned+chr+".txt");
-				DataInputStream inn=new DataInputStream(in);
-				BufferedReader input= new BufferedReader(new InputStreamReader(inn));
-				while((s=input.readLine())!=null){
-					String[] t=s.split("	");
-					
-					queue_pos.add(Integer.parseInt(t[0]));
-					queue_nucl.add(t[1]);
-					if(3<t.length){
-						queue_sample1.add(t[3]);
-					}
-					else{
-						queue_sample1.add("");
-					}
-					if(4<t.length){
-						queue_sample2.add(t[4]);
-					}
-					else{
-						queue_sample2.add("");
-					}
-					if(5<t.length){
-						queue_sample3.add(t[5]);
-					}
-					else{
-						queue_sample3.add("");
-					}
-					
-					//as soon as queue is large enoguh compute the nucleodide count around the center of the queue
-					//update the count vectors and delete the first element of the queue
-					if(queue_pos.size()>20){
-						if(!queue_sample1.get(10).equals("")){
-							String[] tt=queue_sample1.get(10).split(";");
-							for(int i=-10;i<=10;i++){
-								if(i==0){
-									continue;
-								}
-								if(queue_pos.get(10)+i==queue_pos.get(10+i)){
-									for (int j=0;j<tt.length;j++){
-										if(queue_nucl.get(10).equals("C")||queue_nucl.get(10).equals("T")){
-											count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),0)][index_nucl(queue_nucl.get(10+i))]++;
-										}
-										else{
-											count[Integer.parseInt(tt[j])][19-index_array(i)][type(queue_nucl.get(10),0)][3-index_nucl(queue_nucl.get(10+i))]++;
-										}
-									}
-									
-								}
-							}
-							for (int j=0;j<tt.length;j++){
-								count_type[Integer.parseInt(tt[j])][type(queue_nucl.get(10),0)]++;
-							}
-						}
-						if(!queue_sample2.get(10).equals("")){
-							String[] tt=queue_sample2.get(10).split(";");
-							for(int i=-10;i<=10;i++){
-								if(i==0){
-									continue;
-								}
-								if(queue_pos.get(10)+i==queue_pos.get(10+i)){
-									for (int j=0;j<tt.length;j++){
-										if(queue_nucl.get(10).equals("C")||queue_nucl.get(10).equals("T")){
-											count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),1)][index_nucl(queue_nucl.get(10+i))]++;
-										}
-										else{
-											count[Integer.parseInt(tt[j])][19-index_array(i)][type(queue_nucl.get(10),1)][3-index_nucl(queue_nucl.get(10+i))]++;
-										}
-										
-										//count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),1)][index_nucl(queue_nucl.get(10+i))]++;
-									}
-									
-								}
-							}
-							for (int j=0;j<tt.length;j++){
-								count_type[Integer.parseInt(tt[j])][type(queue_nucl.get(10),1)]++;
-							}
-						}
-						if(!queue_sample3.get(10).equals("")){
-							String[] tt=queue_sample3.get(10).split(";");
-							for(int i=-10;i<=10;i++){
-								if(i==0){
-									continue;
-								}
-								if(queue_pos.get(10)+i==queue_pos.get(10+i)){
-									for (int j=0;j<tt.length;j++){
-										if(queue_nucl.get(10).equals("C")||queue_nucl.get(10).equals("T")){
-											count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),2)][index_nucl(queue_nucl.get(10+i))]++;
-										}
-										else{
-											count[Integer.parseInt(tt[j])][19-index_array(i)][type(queue_nucl.get(10),2)][3-index_nucl(queue_nucl.get(10+i))]++;
-										}
-										
-										//count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),2)][index_nucl(queue_nucl.get(10+i))]++;
-									}
-									
-								}
-							}
-							for (int j=0;j<tt.length;j++){
-								count_type[Integer.parseInt(tt[j])][type(queue_nucl.get(10),2)]++;
-							}
-						}
-						queue_pos.remove(0);
-						queue_nucl.remove(0);
-						queue_sample1.remove(0);
-						queue_sample2.remove(0);
-						queue_sample3.remove(0);
-						
-					}
-				}
-				input.close();
-				done=true;
-			}
-			catch(Exception e){
-				StackTraceElement[] aa=e.getStackTrace();
-				for (int i=0;i<aa.length;i++){
-					System.out.println(i+"	"+aa[i].getLineNumber());
-				}
-				System.out.println(e);
-			}
+	public static Count count(String chr){
+		int[][][][] count =new int[no_samples][20][6][4];
+		int[][] count_type =new int[no_samples][6];
+		try{
+			ArrayList<Integer> queue_pos=new ArrayList<Integer>();
+			ArrayList<String> queue_nucl=new ArrayList<String>();
+			ArrayList<String> queue_sample1=new ArrayList<String>();
+			ArrayList<String> queue_sample2=new ArrayList<String>();
+			ArrayList<String> queue_sample3=new ArrayList<String>();
 			
+			String s="";
+			
+			//go through the aligned file from Step 1 and add positions into a queue
+			FileInputStream in=new FileInputStream(file_aligned+chr+".txt");
+			DataInputStream inn=new DataInputStream(in);
+			BufferedReader input= new BufferedReader(new InputStreamReader(inn));
+			
+			FileInputStream in2=new FileInputStream(file_annotation+chr+".txt");
+			DataInputStream inn2=new DataInputStream(in2);
+			BufferedReader input2= new BufferedReader(new InputStreamReader(inn2));
+			
+			
+			while((s=input.readLine())!=null){
+				String[] t=s.split("	");
+				String[] t2=input2.readLine().split("	");
+				
+				queue_pos.add(Integer.parseInt(t2[0]));
+				queue_nucl.add(t2[1]);
+				if(0<t.length){
+					queue_sample1.add(t[0]);
+				}
+				else{
+					queue_sample1.add("");
+				}
+				if(1<t.length){
+					queue_sample2.add(t[1]);
+				}
+				else{
+					queue_sample2.add("");
+				}
+				if(2<t.length){
+					queue_sample3.add(t[2]);
+				}
+				else{
+					queue_sample3.add("");
+				}
+				
+				//as soon as queue is large enoguh compute the nucleodide count around the center of the queue
+				//update the count vectors and delete the first element of the queue
+				if(queue_pos.size()>20){
+					if(!queue_sample1.get(10).equals("")){
+						String[] tt=queue_sample1.get(10).split(";");
+						for(int i=-10;i<=10;i++){
+							if(i==0){
+								continue;
+							}
+							if(queue_pos.get(10)+i==queue_pos.get(10+i)){
+								for (int j=0;j<tt.length;j++){
+									if(queue_nucl.get(10).equals("C")||queue_nucl.get(10).equals("T")){
+										count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),0)][index_nucl(queue_nucl.get(10+i))]++;
+									}
+									else{
+										count[Integer.parseInt(tt[j])][19-index_array(i)][type(queue_nucl.get(10),0)][3-index_nucl(queue_nucl.get(10+i))]++;
+									}
+								}
+								
+							}
+						}
+						for (int j=0;j<tt.length;j++){
+							count_type[Integer.parseInt(tt[j])][type(queue_nucl.get(10),0)]++;
+						}
+					}
+					if(!queue_sample2.get(10).equals("")){
+						String[] tt=queue_sample2.get(10).split(";");
+						for(int i=-10;i<=10;i++){
+							if(i==0){
+								continue;
+							}
+							if(queue_pos.get(10)+i==queue_pos.get(10+i)){
+								for (int j=0;j<tt.length;j++){
+									if(queue_nucl.get(10).equals("C")||queue_nucl.get(10).equals("T")){
+										count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),1)][index_nucl(queue_nucl.get(10+i))]++;
+									}
+									else{
+										count[Integer.parseInt(tt[j])][19-index_array(i)][type(queue_nucl.get(10),1)][3-index_nucl(queue_nucl.get(10+i))]++;
+									}
+									
+									//count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),1)][index_nucl(queue_nucl.get(10+i))]++;
+								}
+								
+							}
+						}
+						for (int j=0;j<tt.length;j++){
+							count_type[Integer.parseInt(tt[j])][type(queue_nucl.get(10),1)]++;
+						}
+					}
+					if(!queue_sample3.get(10).equals("")){
+						String[] tt=queue_sample3.get(10).split(";");
+						for(int i=-10;i<=10;i++){
+							if(i==0){
+								continue;
+							}
+							if(queue_pos.get(10)+i==queue_pos.get(10+i)){
+								for (int j=0;j<tt.length;j++){
+									if(queue_nucl.get(10).equals("C")||queue_nucl.get(10).equals("T")){
+										count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),2)][index_nucl(queue_nucl.get(10+i))]++;
+									}
+									else{
+										count[Integer.parseInt(tt[j])][19-index_array(i)][type(queue_nucl.get(10),2)][3-index_nucl(queue_nucl.get(10+i))]++;
+									}
+									
+									//count[Integer.parseInt(tt[j])][index_array(i)][type(queue_nucl.get(10),2)][index_nucl(queue_nucl.get(10+i))]++;
+								}
+								
+							}
+						}
+						for (int j=0;j<tt.length;j++){
+							count_type[Integer.parseInt(tt[j])][type(queue_nucl.get(10),2)]++;
+						}
+					}
+					queue_pos.remove(0);
+					queue_nucl.remove(0);
+					queue_sample1.remove(0);
+					queue_sample2.remove(0);
+					queue_sample3.remove(0);
+					
+				}
+			}
+			input.close();
+			input2.close();
+		}
+		catch(Exception e){
+			StackTraceElement[] aa=e.getStackTrace();
+			for (int i=0;i<aa.length;i++){
+				System.out.println(i+"	"+aa[i].getLineNumber());
+			}
+			System.out.println(e);
+		}
+		return new Count(count, count_type);
+	}
+	
+	private static class Count{
+		int[][][][] count=null;
+		int[][] count_type=null;
+		public Count(int[][][][] count, int[][] count_type){
+			this.count=count;
+			this.count_type=count_type;
 		}
 	}
 	

@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 13										*
+ * MutPanning 									*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -23,69 +23,50 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class Filter_Step2 {
-	static String[] file_query=new String[2];//"M:\\PostSignFilter\\Queries\\Query";
-	static String[] file_output=new String[2];//"M:\\PostSignFilter\\OutputsBLAT\\Output";
-	static String[] file_out=new String[2];//"M:\\PostSignFilter\\MaskedPositions";
+	//static String[] file_query=new String[2];//"M:\\PostSignFilter\\Queries\\Query";
+	//static String[] file_output=new String[2];//"M:\\PostSignFilter\\OutputsBLAT\\Output";
+	//static String[] file_out=new String[2];//"M:\\PostSignFilter\\MaskedPositions";
 	static String[] entities=new String[0];
+	static boolean[] compute_uniform=new boolean[0];
 	static String[] index_header_samples={"ID","Sample","Cohort"};
+	static String[] types={"","Uniform"};
+	static String file_out="";
 	
-
 	/*
 	 * argument0: root file
 	 * argument1: sample file 
 	 */
 	
-	public static void main(String[] args){
+	public static void main(String[] args, String[] args_entities, boolean[] args_compute_uniform){
 		
-		file_query=new String[]{args[0]+"PostSignFilter/Queries/Query",args[0]+"PostSignFilter/Queries/QueryUniform"};
-		file_output=new String[]{args[0]+"PostSignFilter/OutputsBLAT/Output",args[0]+"PostSignFilter/OutputsBLAT/OutputUniform"};
-		file_out=new String[]{args[0]+"PostSignFilter/MaskedPositions/MaskedPositions",args[0]+"PostSignFilter/MaskedPositions/MaskedPositionsUniform"};
+		//file_query=new String[]{args[0]+"PostSignFilter/Queries/Query",args[0]+"PostSignFilter/Queries/QueryUniform"};
+		//file_output=new String[]{args[0]+"PostSignFilter/OutputsBLAT/Output",args[0]+"PostSignFilter/OutputsBLAT/OutputUniform"};
+		file_out=args[0]+"PostSignFilter/MaskedPositions/MaskedPositions";//new String[]{args[0]+"PostSignFilter/MaskedPositions/MaskedPositions",args[0]+"PostSignFilter/MaskedPositions/MaskedPositionsUniform"};
+		String file_query=args[0]+"/PostSignFilter/Query.fa";
+		String file_output=args[0]+"/PostSignFilter/OutputBLAT.txt";
 		
 		if(!new File(args[0]+"PostSignFilter/MaskedPositions/").exists()){
 			new File(args[0]+"PostSignFilter/MaskedPositions/").mkdir();
 		}
 		
 		//Determine all entity names, as clustering is performed separately for each Step this is needed to coordinate the order
-				try{
-					FileInputStream in=new FileInputStream(args[1]);
-					DataInputStream inn=new DataInputStream(in);
-					BufferedReader input= new BufferedReader(new InputStreamReader(inn));
-					int[] index_header=index_header(input.readLine().split("	"),index_header_samples);
-					String s="";
-					ArrayList<String> aa =new ArrayList<String>();
-					while((s=input.readLine())!=null){
-						String e=s.split("	")[index_header[2]];
-						if(!contains(e,aa)){
-							aa.add(e);
-						}
-					}
-					input.close();
-					Collections.sort(aa);
-					aa.add("PanCancer");
-					entities=new String[aa.size()];
-					for (int i=0;i<aa.size();i++){
-						entities[i]=aa.get(i);
-					}
-				}
-				catch(Exception e){
-					System.out.println(e);
-				}	
-		
+		entities=args_entities;
+		compute_uniform=args_compute_uniform;
 		
 		try{
 			
-			for (int l=0;l<2;l++){
-				for (int k=0;k<entities.length;k++){
-					if(!new File(file_query[l]+entities[k]+".fa").exists()){
+			//for (int l=0;l<2;l++){
+				//for (int k=0;k<entities.length;k++){
+					/*if(!new File(file_query[l]+entities[k]+".fa").exists()){
 						continue;
 					}
 					if(!new File(file_output[l]+entities[k]+".txt").exists()){
 						continue;
-					}
+					}*/
 					
 					
 					//read all the queeries
-					FileInputStream in=new FileInputStream(file_query[l]+entities[k]+".fa");
+					FileInputStream in=new FileInputStream(file_query);//[l]+entities[k]+".fa"
 					DataInputStream inn=new DataInputStream(in);
 					BufferedReader input= new BufferedReader(new InputStreamReader(inn));
 					String s="";
@@ -108,7 +89,7 @@ public class Filter_Step2 {
 					//if this is the case the hotspot mutation is likely to be a mis-
 					//alignment artifact from a different region and is masked in the 
 					//subsequent analysis
-					in=new FileInputStream(file_output[l]+entities[k]+".txt");
+					in=new FileInputStream(file_output);//[l]+entities[k]+".txt"
 					inn=new DataInputStream(in);
 					input= new BufferedReader(new InputStreamReader(inn));
 					while((s=input.readLine())!=null){
@@ -122,6 +103,7 @@ public class Filter_Step2 {
 							continue;
 						}
 						String name_complete=t[9];
+						//System.out.println(name_complete);
 						int alignment_start=Integer.parseInt(t[11]);
 						String original_seq=t[21].split(",")[0].toUpperCase();
 						String aligned_seq=t[22].split(",")[0].toUpperCase();
@@ -129,6 +111,7 @@ public class Filter_Step2 {
 							original_seq=reverse(original_seq);
 							aligned_seq=reverse(aligned_seq);
 						}
+						//System.out.println(index(name_complete,query));
 						if(index(name_complete,query)==-1){
 							continue;
 						}
@@ -150,12 +133,15 @@ public class Filter_Step2 {
 							}
 						}
 						
-						String[] tt=name_complete.split(";");
+						String[] ttt=name_complete.split(":");
+						String[] tt=ttt[1].split(";");
 						String gene=tt[0].split("_")[0];
 						String type=tt[0].split("_")[1];
 						int count=Integer.parseInt(tt[2]);
 						int start_index=Integer.parseInt(tt[1].split(",")[0]);
 						int end_index=Integer.parseInt(tt[1].split(",")[1]);
+						
+						//System.out.println(name_complete+"	"+gene+"	"+type+"	"+count+"	"+start_index+"	"+end_index);
 						
 						if(!type.equals("alt")){
 							continue;
@@ -183,6 +169,47 @@ public class Filter_Step2 {
 					
 					input.close();
 					
+					
+					//for (int i=0;i<query.size();i++){
+					//	System.out.println(query.get(i).name+"	"+detected[i]);
+					//}
+					
+					FileWriter[][] out=new FileWriter[entities.length][2];//(file_out[l]+entities[k]+".txt");
+					BufferedWriter[][] output= new BufferedWriter[entities.length][2];//(out);
+					for (int i=0;i<entities.length;i++){
+						out[i][0]=new FileWriter(file_out+entities[i]+".txt");
+						output[i][0]=new BufferedWriter(out[i][0]);
+						if(compute_uniform[i]){
+							out[i][1]=new FileWriter(file_out+"Uniform"+entities[i]+".txt");
+							output[i][1]=new BufferedWriter(out[i][1]);
+						}
+					}
+					for (int i=0;i<query.size();i++){
+						if(detected[i]==1){
+							String[] ttt=query.get(i).name.split(":");
+							String[] tttt=ttt[0].split("_");
+							int kk=-1;
+							if(tttt.length>1){
+								kk=index(tttt[1],types);
+							}
+							else{
+								kk=0;
+							}
+							//output[index(tttt[0],entities)][kk].write(query.get(i).name);
+							//output[index(tttt[0],entities)][kk].newLine();
+							output[index(tttt[0],entities)][kk].write(ttt[1].split(";")[0].split("_")[0]+"	"+ttt[1].split(";")[3].split(",")[0]+"	"+ttt[1].split(";")[3].split(",")[1]+"	"+ttt[1].split(";")[3].split(",")[2]);
+							output[index(tttt[0],entities)][kk].newLine();
+						}
+					}
+					for (int i=0;i<output.length;i++){
+						for (int j=0;j<output[i].length;j++){
+							if(output[i][j]!=null){
+								output[i][j].close();
+							}
+						}
+					}
+					
+				/*	
 					//output of the misalginment positions found
 					FileWriter out=new FileWriter(file_out[l]+entities[k]+".txt");
 					BufferedWriter output= new BufferedWriter(out);
@@ -193,8 +220,9 @@ public class Filter_Step2 {
 						}
 					}
 					output.close();
-				}
-			}
+				*/
+				//}
+			//}
 			
 			
 			
@@ -208,6 +236,15 @@ public class Filter_Step2 {
 			
 			System.out.println(e);
 		}
+	}
+	
+	public static int index(String s, String[] t){
+		for (int i=0;i<t.length;i++){
+			if(t[i].equals(s)){
+				return i;
+			}
+		}
+		return -1;
 	}
 	
 	public static int[] index_header(String[] header, String[] ideal_header){

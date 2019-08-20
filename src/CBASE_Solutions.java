@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 10										*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -38,7 +38,47 @@ public class CBASE_Solutions {
 	 * arugment1 sample file
 	 */
 	
+	static double[] log_precompute=new double[1000000];
+	static double[] gamma_precompute=new double[1000000];
+	static double[] gamma_delta_precompute=new double[1000000];
+	static double[] exp_precompute=new double[2000000];
+//	static double[][] kv_precompute=new double[1000][4000];
+//	static double[][] kv_precompute_diff1=new double[1000][4000];
+//	static double[][] kv_precompute_diff2=new double[1000][4000];
+	
+	
 	public static void main (String[] args){
+		/*
+		for (double i=0.1;i<=10;i+=0.1){
+			System.out.print(i);
+			for (double j=0.1;j<=10;j+=0.1){
+				System.out.print("	"+besselk_diff2_short(i,j));
+			}
+			System.out.println();
+		}
+		System.exit(0);
+		*/
+		
+		for (int i=0;i<gamma_precompute.length;i++){
+			log_precompute[i]=Math.log((double)(i)/1000.0);
+			gamma_precompute[i]=Gamma.logGamma((double)(i)/1000.0);
+			gamma_delta_precompute[i]=(Gamma.logGamma(0.0001+(double)(i)/1000.0)-Gamma.logGamma(-0.0001+(double)(i)/1000.0))/(2*0.0001);
+		}
+		
+		for (int i=0;i<exp_precompute.length;i++){
+			exp_precompute[i]=Math.exp((double)(i)/1000.0-1000);
+		}
+	
+		/*
+		for (int i=0;i<kv_precompute.length;i++){
+			for (int j=0;j<kv_precompute[i].length;j++){
+				kv_precompute[i][j]=Bessel.k((double)(i)/100.0,(double)(j)/100.0-20,false);
+				kv_precompute_diff1[i][j]=(Bessel.k((double)(i)/100.0,(double)(j)/100.0-20+0.0001,false)-Bessel.k((double)(i)/100.0,(double)(j)/100.0-20-0.0001,false))/(2*0.0001);
+				kv_precompute_diff2[i][j]=(Bessel.k((double)(i)/100.0+0.0001,(double)(j)/100.0-20,false)-Bessel.k((double)(i)/100.0-0.0001,(double)(j)/100.0-20,false))/(2*0.0001);
+				
+			}
+		}*/
+		
 		//Determine all entity names, as clustering is performed separately for each Step this is needed to coordinate the order
 		String[] entity_name=new String[0];
 		try{
@@ -56,7 +96,7 @@ public class CBASE_Solutions {
 			}
 			input.close();
 			Collections.sort(aa);
-			aa.add("PanCancer");
+			//aa.add("PanCancer");
 			entity_name=new String[aa.size()];
 			for (int i=0;i<aa.size();i++){
 				entity_name[i]=aa.get(i);
@@ -75,6 +115,9 @@ public class CBASE_Solutions {
 		}
 		
 		for (int k=0;k<entity_name.length;k++){
+			//if(k<=8){
+			//	continue;
+			//}
 			System.out.println(entity_name[k]);
 			ArrayList<Integer> counts=new ArrayList<Integer>();
 			try{
@@ -98,7 +141,16 @@ public class CBASE_Solutions {
 			}
 			ArrayList<int[]> histogram=histogram(counts);
 			Collections.sort(histogram,comp);
-			double[][] solution=minimize_parallel(150, histogram,  24, 100);
+			double[][] solution=minimize_parallel(50, histogram,  24, 100);//(150, histogram,  24, 100)
+			
+			
+//			System.out.println(entity_name[k]);
+//			for (int i=0;i<solution.length;i++){
+//				System.out.println(ou(solution[i])+", "+(i+1));
+//			}
+//			for (int i=0;i<histogram.size();i++){
+//				System.out.println(histogram.get(i)[0]+"	"+histogram.get(i)[1]+"	"+model1_density(histogram.get(i)[0],solution[0][0],solution[0][1])+"	"+model2_density(histogram.get(i)[0],solution[1][0],solution[1][1])+"	"+model3_density(histogram.get(i)[0],solution[2][0],solution[2][1],solution[2][2],solution[2][3])+"	"+model4_density(histogram.get(i)[0],solution[3][0],solution[3][1],solution[3][2],solution[3][3])+"	"+model5_density(histogram.get(i)[0],solution[4][0],solution[4][1],solution[4][2],solution[4][3],solution[4][4])+"	"+model6_density(histogram.get(i)[0],solution[5][0],solution[5][1],solution[5][2],solution[5][3],solution[5][4]));
+//			}
 			
 			try{
 				FileWriter out=new FileWriter(args[0]+"CBASE/Parameters_Summary/Parameters"+entity_name[k]+".txt");
@@ -141,12 +193,12 @@ public class CBASE_Solutions {
 	}
 	
 	
-	public static double[] improve(int mod_C,  ArrayList<int[]> histogram, double[] start, double[][] bounds, int iterations){
-		double[] a=minimize_neg_ln_L(discard_last(start),mod_C,bounds,histogram,iterations);
-		double value=model(histogram,discard_last(a),mod_C);
+	public static double[] improve_short(int mod_C,  ArrayList<int[]> histogram, double[] start, double[][] bounds, int iterations){
+		double[] a=minimize_neg_ln_L_short(discard_last(start),mod_C,bounds,histogram,iterations);
+		double value=model_short(histogram,discard_last(a),mod_C);
 		for (int i=0;i<100;i++){
-			a=minimize_neg_ln_L(discard_last(a),mod_C,bounds,histogram,iterations);
-			double value_new=model(histogram,discard_last(a),mod_C);
+			a=minimize_neg_ln_L_short(discard_last(a),mod_C,bounds,histogram,iterations);
+			double value_new=model_short(histogram,discard_last(a),mod_C);
 			if(value==value_new){
 				break;
 			}
@@ -155,6 +207,23 @@ public class CBASE_Solutions {
 		}
 		return a;
 	}
+	
+	public static double[] improve_long(int mod_C,  ArrayList<int[]> histogram, double[] start, double[][] bounds, int iterations){
+		double[] a=minimize_neg_ln_L_long(discard_last(start),mod_C,bounds,histogram,iterations);
+		double value=model_long(histogram,discard_last(a),mod_C);
+		for (int i=0;i<100;i++){
+			a=minimize_neg_ln_L_long(discard_last(a),mod_C,bounds,histogram,iterations);
+			double value_new=model_long(histogram,discard_last(a),mod_C);
+			if(value==value_new){
+				break;
+			}
+			value=value_new;
+			//System.out.println(ou(a));
+		}
+		return a;
+	}
+	
+	
 	public static double[] discard_last(double[] a){
 		double[] b=new double[a.length-1];
 		for (int i=0;i<a.length-1;i++){
@@ -163,9 +232,10 @@ public class CBASE_Solutions {
 		return b;
 	}
 	
-	public static double [] minimize_neg_ln_L(double[] start, int mod, double[][] bounds, ArrayList<int[]> histo ,int iterations){//
+	public static double [] minimize_neg_ln_L_short(double[] start, int mod, double[][] bounds, ArrayList<int[]> histo ,int iterations){//
 		//bounds are currently ignored
-		double[][][] standard_bounds={{{0,100},{0,100}},{{0,100},{0,100}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}}};
+		//double[][][] standard_bounds={{{0,100},{0,100}},{{0,100},{0,100}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}}};
+		double[][][] standard_bounds={{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}}};
 		
 		
 		//double[] x=start;
@@ -174,10 +244,10 @@ public class CBASE_Solutions {
 		ArrayList<double[]> x=new ArrayList<double[]>();//stores the last m+1 entries
 		
 		x.add(start);
-		g.add(gradient(x.get(x.size()-1),mod, histo));
+		g.add(gradient_short(x.get(x.size()-1),mod, histo));
 //		System.out.println((0)+"	"+ou(x.get(x.size()-1))+"	"+model(histo,x.get(x.size()-1),mod));
 		
-		double value_best_solution=model(histo,start,mod);
+		double value_best_solution=model_short(histo,start,mod);
 		double[] best_solution=clone(start);
 		
 		outer:
@@ -217,9 +287,9 @@ public class CBASE_Solutions {
 				z=product(1/Math.sqrt(sq_norm(z)),z);
 				
 				double min=Double.MAX_VALUE;
-				double k_min=model(histo,x.get(x.size()-1),mod);
+				double k_min=model_short(histo,x.get(x.size()-1),mod);
 				for (double k=0.01;k<=1;k+=0.01){
-					double m=model(histo,diff(x.get(x.size()-1),product(k,z)),mod);
+					double m=model_short(histo,diff(x.get(x.size()-1),product(k,z)),mod);
 					if(m<min&&in_bound(diff(x.get(x.size()-1),product(k,z)),bounds)){
 						min=m;
 						k_min=k;
@@ -230,9 +300,9 @@ public class CBASE_Solutions {
 				}
 				else{
 					min=Double.MAX_VALUE;
-					k_min=model(histo,x.get(x.size()-1),mod);
+					k_min=model_short(histo,x.get(x.size()-1),mod);
 					for (double k=0.0001;k<=0.01;k+=0.0001){
-						double m=model(histo,diff(x.get(x.size()-1),product(k,z)),mod);
+						double m=model_short(histo,diff(x.get(x.size()-1),product(k,z)),mod);
 						if(m<min&&in_bound(diff(x.get(x.size()-1),product(k,z)),bounds)){
 							min=m;
 							k_min=k;
@@ -262,10 +332,126 @@ public class CBASE_Solutions {
 			
 		
 			x.add(diff(x.get(x.size()-1),z));//add scaling factor
-			g.add(gradient(x.get(x.size()-1), mod, histo));
+			g.add(gradient_short(x.get(x.size()-1), mod, histo));
 //			System.out.println((iter+1)+"	"+ou(x.get(x.size()-1))+"	"+model(histo,x.get(x.size()-1),mod));
 			
-			double val=model(histo,x.get(x.size()-1),mod);
+			double val=model_short(histo,x.get(x.size()-1),mod);
+			if(val<value_best_solution&&val>0&&in_standard_bounds(x.get(x.size()-1),standard_bounds[mod-1])){
+				value_best_solution=val;
+				best_solution=clone(x.get(x.size()-1));
+			}
+			
+		}
+		
+		
+		
+		return concat(best_solution,value_best_solution);//concat(x.get(x.size()-1),model(histo,x.get(x.size()-1),mod));
+	}
+	
+	public static double [] minimize_neg_ln_L_long(double[] start, int mod, double[][] bounds, ArrayList<int[]> histo ,int iterations){//
+		//bounds are currently ignored
+		//double[][][] standard_bounds={{{0,100},{0,100}},{{0,100},{0,100}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}}};
+		double[][][] standard_bounds={{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}}};
+		
+		
+		//double[] x=start;
+		//double[] g=gradient(x);
+		ArrayList<double[]> g=new ArrayList<double[]>();//stores the last m+1 entries
+		ArrayList<double[]> x=new ArrayList<double[]>();//stores the last m+1 entries
+		
+		x.add(start);
+		g.add(gradient_long(x.get(x.size()-1),mod, histo));
+//		System.out.println((0)+"	"+ou(x.get(x.size()-1))+"	"+model(histo,x.get(x.size()-1),mod));
+		
+		double value_best_solution=model_long(histo,start,mod);
+		double[] best_solution=clone(start);
+		
+		outer:
+		for (int iter=0;iter<iterations;iter++){
+			double[] z=new double[0];
+			//double scaling=1;
+			if(x.size()>1){
+				double[] q=clone(g.get(g.size()-1));
+				double [] alpha=new double[x.size()-1];
+				for (int i=1;i<x.size();i++){
+					double[] y=diff(g.get(x.size()-i),g.get(x.size()-i-1));
+					double[] s=diff(x.get(x.size()-i),x.get(x.size()-i-1));
+					double rho=1/product_tv_v(y,s);
+					alpha[x.size()-i-1]=rho*product_tv_v(s,q);
+					q=diff(q,product(alpha[i-1],y));
+				}
+				
+				
+				double[] y=diff(g.get(g.size()-1),g.get(g.size()-2));
+				double[] s=diff(x.get(x.size()-1),x.get(x.size()-2));
+				
+				//double scaling=product_tv_v(s,y)/sq_norm(y);
+				double[][] h_k_0=product(1.0/sq_norm(y),product_v_tv(y,s));
+				z=product(h_k_0,q);
+				for (int i=1;i<x.size();i++){
+					y=diff(g.get(i),g.get(i-1));
+					s=diff(x.get(i),x.get(i-1));
+					double rho=1/product_tv_v(y,s);
+					double beta=rho*product_tv_v(y,z);
+					z=add(z,product(alpha[i-1]-beta,s));
+				}
+				//System.out.println("z: "+ou(z));
+				if(is_nan(z)){
+					break outer;
+				}
+				
+				z=product(1/Math.sqrt(sq_norm(z)),z);
+				
+				double min=Double.MAX_VALUE;
+				double k_min=model_long(histo,x.get(x.size()-1),mod);
+				for (double k=0.01;k<=1;k+=0.01){
+					double m=model_long(histo,diff(x.get(x.size()-1),product(k,z)),mod);
+					if(m<min&&in_bound(diff(x.get(x.size()-1),product(k,z)),bounds)){
+						min=m;
+						k_min=k;
+					}
+				}
+				if(min!=Double.MAX_VALUE){
+					z=product(k_min,z);
+				}
+				else{
+					min=Double.MAX_VALUE;
+					k_min=model_long(histo,x.get(x.size()-1),mod);
+					for (double k=0.0001;k<=0.01;k+=0.0001){
+						double m=model_long(histo,diff(x.get(x.size()-1),product(k,z)),mod);
+						if(m<min&&in_bound(diff(x.get(x.size()-1),product(k,z)),bounds)){
+							min=m;
+							k_min=k;
+						}
+					}
+					if(min!=Double.MAX_VALUE){
+						z=product(k_min,z);
+					}
+					else{
+						break outer;
+					}
+					
+					
+				}
+			}
+			else{
+				if(mod==1||mod==2){
+					z=new double[]{0.01,0.01};
+				}
+				else if(mod==3||mod==4){
+					z= new double[]{0.01,0.01,0.01,0.01};
+				}
+				else if(mod==5||mod==6){
+					z= new double[]{0.01,0.01,0.01,0.01,0.01};
+				}
+			}
+			
+		
+			x.add(diff(x.get(x.size()-1),z));//add scaling factor
+			g.add(gradient_long(x.get(x.size()-1), mod, histo));
+//			System.out.println((iter+1)+"	"+ou(x.get(x.size()-1))+"	"+model(histo,x.get(x.size()-1),mod));
+			
+			double val=model_long(histo,x.get(x.size()-1),mod);
 			if(val<value_best_solution&&val>0&&in_standard_bounds(x.get(x.size()-1),standard_bounds[mod-1])){
 				value_best_solution=val;
 				best_solution=clone(x.get(x.size()-1));
@@ -442,10 +628,36 @@ public class CBASE_Solutions {
 	}
 	
 	
-	public static double[] gradient(double[] v, int mode, ArrayList<int[]> histo){
+	public static double[] gradient_short(double[] v, int mode, ArrayList<int[]> histo){
+		if(mode==1){
+			return model1_short_diff(histo,v[0],v[1]);
+		}
+		else if(mode==2){
+			return model2_short_diff(histo,v[0],v[1]);
+		} 
+		else if(mode==3){
+			return model3_short_diff(histo,v[0],v[1],v[2],v[3]);
+		} 
+		else if(mode==4){
+			return model4_short_diff(histo,v[0],v[1],v[2],v[3]);
+		} 
+		else if(mode==5){
+			return model5_short_diff(histo,v[0],v[1],v[2],v[3],v[4]);
+		}
+		else if(mode==6){
+			return model6_short_diff(histo,v[0],v[1],v[2],v[3],v[4]);
+		} 
+		else{
+			return new double[0];
+		}
+	}
+	
+	
+	public static double[] gradient_long(double[] v, int mode, ArrayList<int[]> histo){
 		double delta=0.0001;
 		if(mode==1){
 			return gradient1(v,histo,delta);
+			
 		}
 		else if(mode==2){
 			return gradient2(v,histo,delta);
@@ -466,6 +678,7 @@ public class CBASE_Solutions {
 			return new double[0];
 		}
 	}
+	
 	
 	public static double[] gradient1(double[] v, ArrayList<int[]> histo, double delta){
 		return new double[] {(model1(histo,v[0]+delta,v[1])-model1(histo,v[0]-delta,v[1]))/(2*delta),(model1(histo,v[0],v[1]+delta)-model1(histo,v[0],v[1]-delta))/(2*delta)};
@@ -619,11 +832,29 @@ public class CBASE_Solutions {
 	public static double[][] minimize_parallel(int rep_no, ArrayList<int[]> histo, int no_cpu, int iterations){
 		ArrayList<double[]>[] solutions=new ArrayList[6];
 		for (int mod=1;mod<=6;mod++){
+			//if(mod<6){
+			//	continue;
+			//}
 			solutions[mod-1]=minimize_parallel(mod,rep_no,histo,no_cpu,iterations);
 		}
+		/*
+		for (int j=0;j<solutions.length;j++){
+			if(j<5){
+				continue;
+			}
+			for (int k=0;k<solutions[j].size();k++){
+				for (int l=0;l<solutions[j].get(k).length;l++){
+					System.out.print("	"+solutions[j].get(k)[l]);
+				}
+				System.out.println();
+			}
+		}
+		System.out.println(solutions[5].size());
+		System.exit(0);*/
 		
-		double[][][] standard_bounds={{{0,100},{0,100}},{{0,100},{0,100}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}}};
+		double[][][] standard_bounds={{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}}};
 		
+		/*
 		SubthreadImprove[][] subthreads=new SubthreadImprove[solutions.length][];
 		for (int i=0;i<solutions.length;i++){
 			subthreads[i]=new SubthreadImprove[solutions[i].size()];
@@ -632,8 +863,35 @@ public class CBASE_Solutions {
 			}
 		}
 		execute(subthreads,no_cpu);
+		*/
+		double[][][] subthreads=new double[solutions.length][][];
+		for (int i=0;i<solutions.length;i++){
+			subthreads[i]=new double[solutions[i].size()][];
+			for (int j=0;j<solutions[i].size();j++){
+				subthreads[i][j]=run_improve(i+1,  histo, solutions[i].get(j), standard_bounds[i],  iterations);
+			}
+		}
+		
 		
 		double[][] solutions2=new double[6][];
+		for (int i=0;i<subthreads.length;i++){
+			double min=Double.MAX_VALUE;
+			int j_min=-1;
+			for (int j=0;j<subthreads[i].length;j++){
+				if(subthreads[i][j][subthreads[i][j].length-1]<min){
+					min=subthreads[i][j][subthreads[i][j].length-1];
+					j_min=j;
+				}
+			}
+			if(j_min!=-1){
+				solutions2[i]=subthreads[i][j_min];	
+			}
+			else{
+				solutions2[i]=new double[0];
+			}
+			
+		}
+		/*
 		for (int i=0;i<subthreads.length;i++){
 			double min=Double.MAX_VALUE;
 			int j_min=-1;
@@ -650,31 +908,35 @@ public class CBASE_Solutions {
 				solutions2[i]=new double[0];
 			}
 			
-		}
+		}*/
 		return solutions2;
 	}
 	
 	
 	public static ArrayList<double[]> minimize_parallel(int mod_C, int rep_no, ArrayList<int[]> histo, int no_cpu, int iterations){
-		double[][][] standard_bounds={{{0,100},{0,100}},{{0,100},{0,100}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}}};
+		//double[][][] standard_bounds={{{0,100},{0,100}},{{0,100},{0,100}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}},{{0,100},{0,100},{0,100},{0,100},{0,1}}};
+		double[][][] standard_bounds={{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}},{{0.01,100},{0.01,100},{0.01,100},{0.01,100},{0.01,1}}};
+		
+		
 		
 		ArrayList<double[]> solutions=new ArrayList<double[]>();
 		if(mod_C==1){
-			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			//double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			double[] low_b=new double[]{Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3)};
 			double[] up_b=new double[]{50*uniform(1,2),50*uniform(1,2)};
 			
 			//cur_min_res=new double[]{0,0,Double.MAX_VALUE};
 			
-			Subthread[] threads=new Subthread[rep_no];
+			
+			double[][] threads=new double[rep_no][];
 			for (int i=0;i<rep_no;i++){
-				threads[i] = new Subthread(new double[]{uniform(0.02,10), uniform(0.02,10)}, 1, new double[][]{{low_b[0],up_b[0]}, {low_b[1],up_b[1]}}, histo,iterations);	
+				threads[i] =  run(new double[]{uniform(0.02,10), uniform(0.02,10)}, 1, new double[][]{{low_b[0],up_b[0]}, {low_b[1],up_b[1]}}, histo,iterations);	
 			}
-			execute(threads,no_cpu);
 			for (int i=0;i<threads.length;i++){
-				if(in_standard_bounds(threads[i].solution,standard_bounds[0])){
+				if(in_standard_bounds(threads[i],standard_bounds[0])){
 					//System.out.println((i+1)+"	"+ou(p_res));
-					if (threads[i].solution[2]>0 && threads[i].solution[2]<Double.MAX_VALUE){
-						solutions.add(new double[]{threads[i].solution[0],threads[i].solution[1],threads[i].solution[2]});	
+					if (threads[i][2]>0 && threads[i][2]<Double.MAX_VALUE){
+						solutions.add(new double[]{threads[i][0],threads[i][1],threads[i][2]});	
 					}
 				}
 			}
@@ -682,97 +944,106 @@ public class CBASE_Solutions {
 			
 		}
 		else if(mod_C==2){
-			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			//double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			double[] low_b=new double[]{Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3)};
 			double[] up_b=new double[]{50*uniform(1,2),50*uniform(1,2)};
 			//cur_min_res=new double[]{0,0,Double.MAX_VALUE};
 			
-			Subthread[] threads=new Subthread[rep_no];
+			double[][] threads=new double[rep_no][];
 			for (int i=0;i<rep_no;i++){
-				threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,10)},2, new double[][]{{low_b[0],up_b[0]}, {low_b[1],up_b[1]}}, histo,iterations);
+				threads[i]=run(new double[]{uniform(0.02,10), uniform(0.02,10)},2, new double[][]{{low_b[0],up_b[0]}, {low_b[1],up_b[1]}}, histo,iterations);
 			}
-			execute(threads,no_cpu);
 			for (int i=0;i<threads.length;i++){
-				if(in_standard_bounds(threads[i].solution,standard_bounds[1])){
+				if(in_standard_bounds(threads[i],standard_bounds[1])){
 					//System.out.println((i+1)+"	"+ou(p_res));
-					if (threads[i].solution[2]>0 && threads[i].solution[2]<Double.MAX_VALUE){
-						solutions.add(new double[]{threads[i].solution[0],threads[i].solution[1],threads[i].solution[2]});	
+					if (threads[i][2]>0 && threads[i][2]<Double.MAX_VALUE){
+						solutions.add(new double[]{threads[i][0],threads[i][1],threads[i][2]});	
 					}
 				}
 			}
 			
 		}
 		else if(mod_C==3){
-			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			//double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			double[] low_b=new double[]{Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3)};
 			double[] up_b=new double[]{50*uniform(1,2),50*uniform(1,2),50*uniform(1,2),50*uniform(1,2)};
 			//cur_min_res=new double[]{0,0,0,0,Double.MAX_VALUE};
 			
-			Subthread[] threads=new Subthread[rep_no];
+			double[][] threads=new double[rep_no][];
 			for (int i=0;i<rep_no;i++){
-				threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,10), uniform(0.02,10), uniform(2*Math.pow(10, -5),0.95)},  3, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],0.9999}},histo,iterations);
+				//threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,10), uniform(0.02,10), uniform(2*Math.pow(10, -5),0.95)},  3, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],0.9999}},histo,iterations);
+				threads[i]=run(new double[]{uniform(0.02,10), uniform(0.02,10), uniform(0.02,10), uniform(2*Math.pow(10, -2),0.95)},  3, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],0.9999}},histo,iterations);
+				
 			}
-			execute(threads,no_cpu);
 			for (int i=0;i<threads.length;i++){
-				if(in_standard_bounds(threads[i].solution,standard_bounds[2])){
-					if (threads[i].solution[4]>0 && threads[i].solution[4]<Double.MAX_VALUE){
-						solutions.add(new double[]{threads[i].solution[0],threads[i].solution[1],threads[i].solution[2],threads[i].solution[3],threads[i].solution[4]});
+				if(in_standard_bounds(threads[i],standard_bounds[2])){
+					if (threads[i][4]>0 && threads[i][4]<Double.MAX_VALUE){
+						solutions.add(new double[]{threads[i][0],threads[i][1],threads[i][2],threads[i][3],threads[i][4]});
 					}	
 				}	
 			}
 			
 		}
 		else if(mod_C==4){
-			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			//double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			double[] low_b=new double[]{Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3)};
 			double[] up_b=new double[]{50*uniform(1,2),50*uniform(1,2),50*uniform(1,2),50*uniform(1,2)};
 			//cur_min_res=new double[]{0,0,0,0,Double.MAX_VALUE};
 			
-			Subthread[] threads=new Subthread[rep_no];
+			double[][] threads=new double[rep_no][];
 			for (int i=0;i<rep_no;i++){
-				threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,10), uniform(0.02,10), uniform(2*Math.pow(10,-5),0.95)}, 4, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],0.9999}},histo,iterations);
+				//threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,10), uniform(0.02,10), uniform(2*Math.pow(10,-5),0.95)}, 4, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],0.9999}},histo,iterations);
+				threads[i]=run(new double[]{uniform(0.02,10), uniform(0.02,10), uniform(0.02,10), uniform(2*Math.pow(10,-2),0.95)}, 4, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],0.9999}},histo,iterations);
 				
 			}
-			execute(threads,no_cpu);
 			for (int i=0;i<threads.length;i++){
-				if(in_standard_bounds(threads[i].solution,standard_bounds[3])){
-					if (threads[i].solution[4]>0 && threads[i].solution[4]<Double.MAX_VALUE){
-						solutions.add(new double[]{threads[i].solution[0],threads[i].solution[1],threads[i].solution[2],threads[i].solution[3],threads[i].solution[4]});
+				if(in_standard_bounds(threads[i],standard_bounds[3])){
+					if (threads[i][4]>0 && threads[i][4]<Double.MAX_VALUE){
+						solutions.add(new double[]{threads[i][0],threads[i][1],threads[i][2],threads[i][3],threads[i][4]});
 					}	
 				}
 			}
 			
 		}
 		else if(mod_C==5){
-			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			//double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			double[] low_b=new double[]{Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3)};
 			double[] up_b=new double[]{50*uniform(1,2),50*uniform(1,2),50*uniform(1,2),50*uniform(1,2),50*uniform(1,2)};
 			//cur_min_res=new double[]{0,0,0,0,0,Double.MAX_VALUE};
 			
-			Subthread[] threads=new Subthread[rep_no];
+			double[][] threads=new double[rep_no][];
 			for (int i=0;i<rep_no;i++){
-				threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,5), uniform(0.02,10), uniform(0.02,10.),uniform(2*Math.pow(10, -5),0.95)},  5, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],up_b[3]},{low_b[4],0.9999}},histo,iterations);
+				//threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,5), uniform(0.02,10), uniform(0.02,10.),uniform(2*Math.pow(10, -5),0.95)},  5, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],up_b[3]},{low_b[4],0.9999}},histo,iterations);
+				threads[i]=run(new double[]{uniform(0.02,10), uniform(0.02,5), uniform(0.02,10), uniform(0.02,10.),uniform(2*Math.pow(10, -2),0.95)},  5, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],up_b[3]},{low_b[4],0.9999}},histo,iterations);
+				
 			}
-			execute(threads,no_cpu);
 			for (int i=0;i<threads.length;i++){
-				if(in_standard_bounds(threads[i].solution,standard_bounds[4])){
-					if (threads[i].solution[5]>0 && threads[i].solution[5]<Double.MAX_VALUE){
-						solutions.add(new double[]{threads[i].solution[0],threads[i].solution[1],threads[i].solution[2],threads[i].solution[3],threads[i].solution[4],threads[i].solution[5]});
+				if(in_standard_bounds(threads[i],standard_bounds[4])){
+					if (threads[i][5]>0 && threads[i][5]<Double.MAX_VALUE){
+						solutions.add(new double[]{threads[i][0],threads[i][1],threads[i][2],threads[i][3],threads[i][4],threads[i][5]});
 					}
 				}
 			}
 			
 		}	
 		else if(mod_C==6){
-			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			//double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
+			double[] low_b=new double[]{Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3),Math.pow(10,-2)*uniform(1,3)};
 			double[] up_b=new double[]{50*uniform(1,2),50*uniform(1,2),50*uniform(1,2),50*uniform(1,2),50*uniform(1,2)};
 			//cur_min_res=new double[]{0,0,0,0,0,Double.MAX_VALUE};
 			
-			Subthread[] threads=new Subthread[rep_no];
+			double[][] threads=new double[rep_no][];
 			for (int i=0;i<rep_no;i++){
-				threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,5), uniform(0.02,10), uniform(0.02,10.),uniform(2*Math.pow(10, -5),0.95)},  6, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],up_b[3]},{low_b[4],0.9999}},histo,iterations);
+				//threads[i]=new Subthread(new double[]{uniform(0.02,10), uniform(0.02,5), uniform(0.02,10), uniform(0.02,10.),uniform(2*Math.pow(10, -5),0.95)},  6, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],up_b[3]},{low_b[4],0.9999}},histo,iterations);
+				threads[i]=run(new double[]{uniform(0.02,10), uniform(0.02,5), uniform(0.02,10), uniform(0.02,10.),uniform(2*Math.pow(10, -2),0.95)},  6, new double[][]{{low_b[0],up_b[0]},{low_b[1],up_b[1]},{low_b[2],up_b[2]},{low_b[3],up_b[3]},{low_b[4],0.9999}},histo,iterations);
+				
 			}
-			execute(threads, no_cpu);
 			for (int i=0;i<threads.length;i++){
-				if(in_standard_bounds(threads[i].solution,standard_bounds[5])){
-					if (threads[i].solution[5]>0 && threads[i].solution[5]<Double.MAX_VALUE){
-						solutions.add(new double[]{threads[i].solution[0],threads[i].solution[1],threads[i].solution[2],threads[i].solution[3],threads[i].solution[4],threads[i].solution[5]});
+				//System.out.println(threads[i][0]+"	"+threads[i][1]+"	"+threads[i][2]+"	"+threads[i][3]+"	"+threads[i][4]+"	"+threads[i][5]);
+				//System.out.println(model_long(histo,threads[i],mod_C)+"	"+model_short(histo,threads[i],mod_C));
+				if(in_standard_bounds(threads[i],standard_bounds[5])){
+					if (threads[i][5]>0 && threads[i][5]<Double.MAX_VALUE){
+						solutions.add(new double[]{threads[i][0],threads[i][1],threads[i][2],threads[i][3],threads[i][4],threads[i][5]});
 					}
 				}
 			}
@@ -789,6 +1060,7 @@ public class CBASE_Solutions {
 		return solutions_final;
 	}
 	
+	/*
 	public static void execute(Subthread[] threads, int no_cpu){
 
 		int no_undone=threads.length;
@@ -825,9 +1097,9 @@ public class CBASE_Solutions {
 				System.out.println(e);
 			}
 		}
-	}
+	}*/
 	
-	
+	/*
 	public static void execute(SubthreadImprove[][] threads, int no_cpu){
 
 		int no_undone=threads.length;
@@ -869,8 +1141,8 @@ public class CBASE_Solutions {
 				System.out.println(e);
 			}
 		}
-	}
-	
+	}*/
+	/*
 	private static class SubthreadImprove extends Thread{
 		volatile double[] solution=new double[0];
 		volatile boolean done=false;
@@ -892,21 +1164,26 @@ public class CBASE_Solutions {
 		public void run(){
 			running=true;
 			done=false;
-			solution=improve(mod_C, histogram, start, bounds, iterations);
+			solution=improve_short(mod_C, histogram, start, bounds, iterations);//TODO: short vs long
 			running=false;
 			done=true;
 		}
+	}*/
+	
+	public static double[]  run_improve(int mod_C, ArrayList<int[]> histogram,double[]  start,double[][] bounds, int iterations){
+		return improve_short(mod_C, histogram, start, bounds, iterations);//TODO: short vs long
 	}
 	
+	/*
 	private static class Subthread extends Thread{
 		volatile double[] solution=new double[0];
 		volatile boolean done=false;
 		volatile boolean running=false;
-		double[] start=new double[0];
-		int mod=-1;
-		double[][] bounds=new double[0][0];
-		ArrayList<int[]> histo=new ArrayList<int[]>();
-		int iterations=0;
+		 start=new double[0];
+		 mod=-1;
+		bounds=new double[0][0];
+		 histo=new ArrayList<int[]>();
+		 iterations=0;
 		public Subthread(double[] start, int mod, double[][] bounds, ArrayList<int[]> histo, int iterations){
 			this.start=start;
 			this.mod=mod;
@@ -917,15 +1194,19 @@ public class CBASE_Solutions {
 		public void run(){
 			running=true;
 			done=false;
-			solution=minimize_neg_ln_L( start,  mod, bounds,  histo, iterations);
+			solution=minimize_neg_ln_L_short( start,  mod, bounds,  histo, iterations);//TODO: short vs long
 			running=false;
 			done=true;
 		}
+	}*/
+	
+	public static double[] run(double[] start, int mod,double[][]  bounds, ArrayList<int[]> histo, int iterations){
+		return minimize_neg_ln_L_short(start,  mod, bounds,  histo, iterations);//TODO: short vs long
 	}
 	
 	
-	
-	public static double[] minimize(int mod_C, int rep_no, ArrayList<int[]> histo, int iterations){
+	/*
+	public static double[] minimizeee(int mod_C, int rep_no, ArrayList<int[]> histo, int iterations){
 		double[] cur_min_res=new double[0];
 		if(mod_C==1){
 			double[] low_b=new double[]{Math.pow(10,-5)*uniform(1,3),Math.pow(10,-5)*uniform(1,3)};
@@ -1027,18 +1308,10 @@ public class CBASE_Solutions {
 		}
 		return cur_min_res;
 	}
+	*/
 	
 	
-	
-	public static double model1(int [] s, double a, double b){
-		double sum=0;
-		for (int i=0;i<s.length;i++){
-			sum += (s[i]*Math.log(b) + (-s[i]-a)*Math.log(1 + b) + Gamma.logGamma(s[i] + a) -  Gamma.logGamma(s[i]+1) -  Gamma.logGamma(a));
-		}
-		return -sum;
-	}
-	
-	public static double model(ArrayList<int[]> histo, double[] param, int mod){
+	public static double model_long(ArrayList<int[]> histo, double[] param, int mod){
 		if(mod==1){
 			return model1(histo,param[0],param[1]);
 		}
@@ -1062,6 +1335,31 @@ public class CBASE_Solutions {
 		}
 	}
 	
+	public static double model_short(ArrayList<int[]> histo, double[] param, int mod){
+		if(mod==1){
+			return model1_short(histo,param[0],param[1]);
+		}
+		else if(mod==2){
+			return model2_short(histo,param[0],param[1]);
+		}
+		else if(mod==3){
+			return model3_short(histo,param[0],param[1],param[2],param[3]);
+		}
+		else if(mod==4){
+			return model4_short(histo,param[0],param[1],param[2],param[3]);
+		}
+		else if(mod==5){
+			return model5_short(histo,param[0],param[1],param[2],param[3],param[4]);
+		}
+		else if(mod==6){
+			return model6_short(histo,param[0],param[1],param[2],param[3],param[4]);
+		}
+		else{
+			return 0;
+		}
+	}
+	
+	
 	public static double model1(ArrayList<int[]> h, double a, double b){
 		double sum=0;
 		for (int i=0;i<h.size();i++){
@@ -1073,18 +1371,215 @@ public class CBASE_Solutions {
 		return -sum;
 	}
 	
-	public static double model2(int [] s, double a, double b){
-		double sum=0;
-		for (int i=0;i<s.length;i++){
-			double proxy=besselk(-s[i] + a, 2*Math.sqrt(b));
-			sum+= Math.log(2) + ((s[i] + a)/2.0)*Math.log(b) + Math.log(proxy) - Gamma.logGamma(s[i]+1) - Gamma.logGamma(a);
-		}
-		return -sum;		
-	}
-	public static double model2(ArrayList<int[]> h, double a, double b){//TODO: bessel
+	public static double model1_short(ArrayList<int[]> h, double a, double b){
 		double sum=0;
 		for (int i=0;i<h.size();i++){
-			double proxy=besselk(-h.get(i)[0] + a, 2*Math.sqrt(b));
+			double x= (h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) -  logGamma(a));
+			if(Double.isFinite(x)){
+				sum+=x*h.get(i)[1];
+			}
+			
+		}
+		return -sum;
+	}
+	
+	
+	public static double[] model1_short_diff(ArrayList<int[]> h, double a, double b){
+		double[] sum=new double[2];
+		for (int i=0;i<h.size();i++){
+			double x_1= ( -log(1 + b) + delta_logGamma(h.get(i)[0] + a)  -  delta_logGamma(a));
+			double x_2= (h.get(i)[0]*delta_log(b) + (-h.get(i)[0]-a)*delta_log(1 + b) );
+			
+			if(Double.isFinite(x_1)&&Double.isFinite(x_2)){
+				sum[0]-=x_1*h.get(i)[1];
+				sum[1]-=x_2*h.get(i)[1];
+			}
+		}
+
+		return sum;
+	}
+	
+	
+	
+	
+	public static double log(double x){
+		
+		if(Double.isNaN(x)||x<=1.1||(int)(x*1000)>=log_precompute.length){
+			return Math.log(x);
+		}
+		else {
+			return log_precompute[(int)(x*1000)];
+		}
+		
+	}
+	public static double logGamma(double x){
+		if(Double.isNaN(x)||x<=1||(int)(x*1000)>=gamma_precompute.length){
+			return Gamma.logGamma(x);
+		}
+		else{
+			return gamma_precompute[(int)(x*1000)];
+		}
+	}
+	public static double delta_logGamma(double x){
+		if(Double.isNaN(x)||x<=1||(int)(x*1000)>=gamma_precompute.length){
+			return (Gamma.logGamma(x+0.0001)-Gamma.logGamma(x-0.0001))/(2*0.0001);
+		}
+		else{
+			return gamma_delta_precompute[(int)(x*1000)];
+		}
+		
+	}
+	public static double delta_log(double x){
+		return 1.0/x;
+	}
+	public static double exp(double x){
+		
+		if(!Double.isNaN(x)&&0<=(int)((x+1000)*1000)&&(int)((x+1000)*1000)<exp_precompute.length){
+			return exp_precompute[(int)((x+1000)*1000)];
+		}
+		else{
+			return Math.exp(x);
+		}
+		//return Math.exp(x);
+	}
+	public static double besselk_diff1_short(double n, double x){
+		/*
+		if(Double.isNaN(x)||Double.isNaN(n)){
+			return Double.NaN;
+		}
+		else if(0<=(int)((n+20)*100)&&(int)((n+20)*100)<kv_precompute_diff1[0].length&&0<=(int)(x*100)&&(int)(x*100)<kv_precompute_diff1.length){
+			//System.out.println(kv_precompute_diff1[(int)(x*100)][(int)((n+20)*100)]+"	"+((Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001)));
+			return kv_precompute_diff1[(int)(x*100)][(int)((n+20)*100)];
+		}
+		else{
+			return (Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001);
+		}*/
+		/*
+		int x1=(int)(x*100);
+		int x2=(int)(x*100)+1;
+		int n1=(int)((n+20)*100);
+		int n2=(int)((n+20)*100)+1;
+		
+		if(Double.isNaN(x)||Double.isNaN(n)){
+			return Double.NaN;
+		}
+		else if(0<=n1&&n2<kv_precompute_diff1[0].length&&0<=x1&&x2<kv_precompute_diff1.length){
+			double d_x=(x-(double)(x1)/100.0)/((double)(x2)/100.0-(double)(x1)/100.0);
+			double d_n=(n-((double)(n1)/100.0-20))/((double)(n2)/100.0-(double)(n1)/100.0);
+			double a=Math.exp(Math.log(kv_precompute_diff1[x1][n1])*(1-d_x)*(1-d_n)+Math.log(kv_precompute_diff1[x1][n2])*(1-d_x)*(d_n)+Math.log(kv_precompute_diff1[x2][n1])*(d_x)*(1-d_n)+Math.log(kv_precompute_diff1[x2][n2])*d_x*d_n);
+			//System.out.println(a+"	"+(Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001));
+			if(Double.isNaN(a)||a==0){
+				return (Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001);
+				
+			}
+			else{
+				return a;
+			}
+			
+			//Bessel.k(x, n, false);
+		}
+		else{
+			return (Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001);
+		}*/		
+		return (Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001);
+		
+	}
+	public static double besselk_diff2_short(double n, double x){
+		/*
+		if(Double.isNaN(x)||Double.isNaN(n)){
+			return Double.NaN;
+		}
+		else if(0<=(int)((n+20)*100)&&(int)((n+20)*100)<kv_precompute_diff2[0].length&&0<=(int)(x*100)&&(int)(x*100)<kv_precompute_diff2.length){
+			return kv_precompute_diff2[(int)(x*100)][(int)((n+20)*100)];
+		}
+		else{
+			return (Bessel.k(x+0.0001, n, false)-Bessel.k(x-0.0001, n, false))/(2*0.0001);
+		}*/
+		
+		/*
+		int x1=(int)(x*100);
+		int x2=(int)(x*100)+1;
+		int n1=(int)((n+20)*100);
+		int n2=(int)((n+20)*100)+1;
+		
+		if(Double.isNaN(x)||Double.isNaN(n)){
+			return Double.NaN;
+		}
+		else if(0<=n1&&n2<kv_precompute_diff2[0].length&&0<=x1&&x2<kv_precompute_diff2.length){
+			double d_x=(x-(double)(x1)/100.0)/((double)(x2)/100.0-(double)(x1)/100.0);
+			double d_n=(n-((double)(n1)/100.0-20))/((double)(n2)/100.0-(double)(n1)/100.0);
+			double a=-Math.exp(Math.log(-kv_precompute_diff2[x1][n1])*(1-d_x)*(1-d_n)+Math.log(-kv_precompute_diff2[x1][n2])*(1-d_x)*(d_n)+Math.log(-kv_precompute_diff2[x2][n1])*(d_x)*(1-d_n)+Math.log(-kv_precompute_diff2[x2][n2])*d_x*d_n);
+			
+			if(Double.isNaN(a)||a==0){
+				return (Bessel.k(x+0.0001, n, false)-Bessel.k(x-0.0001, n, false))/(2*0.0001);
+				
+			}
+			else{
+				return a;
+			}
+			//System.out.println(a+"	"+(Bessel.k(x+0.0001, n, false)-Bessel.k(x-0.0001, n, false))/(2*0.0001));
+			
+			//System.out.println(a+"	"+(Bessel.k(x, n+0.0001, false)-Bessel.k(x, n-0.0001, false))/(2*0.0001));
+			//Bessel.k(x, n, false);
+		}
+		else{
+			return (Bessel.k(x+0.0001, n, false)-Bessel.k(x-0.0001, n, false))/(2*0.0001);
+		}*/
+		return (Bessel.k(x+0.0001, n, false)-Bessel.k(x-0.0001, n, false))/(2*0.0001);
+		
+	}
+	
+	
+	public static double besselk_short(double n, double x){
+		/*
+		if(Double.isNaN(x)||Double.isNaN(n)){
+			return Double.NaN;
+		}
+		else if(0<=(int)((n+20)*100)&&(int)((n+20)*100)<kv_precompute[0].length&&0<=(int)(x*100)&&(int)(x*100)<kv_precompute.length){
+			//System.out.println(n+"	"+x+"	"+kv_precompute[(int)(x*100)][(int)((n+20)*100)]+"	"+Bessel.k(x, n, false));
+			return kv_precompute[(int)(x*100)][(int)((n+20)*100)];
+		}
+		else{
+			return Bessel.k(x, n, false);
+		}*/
+		
+		/*
+		int x1=(int)(x*100);
+		int x2=(int)(x*100)+1;
+		int n1=(int)((n+20)*100);
+		int n2=(int)((n+20)*100)+1;
+		
+		if(Double.isNaN(x)||Double.isNaN(n)){
+			return Double.NaN;
+		}
+		else if(0<=n1&&n2<kv_precompute[0].length&&0<=x1&&x2<kv_precompute.length){
+			double d_x=(x-(double)(x1)/100.0)/((double)(x2)/100.0-(double)(x1)/100.0);
+			double d_n=(n-((double)(n1)/100.0-20))/((double)(n2)/100.0-(double)(n1)/100.0);
+			double a=Math.exp(Math.log(kv_precompute[x1][n1])*(1-d_x)*(1-d_n)+Math.log(kv_precompute[x1][n2])*(1-d_x)*(d_n)+Math.log(kv_precompute[x2][n1])*(d_x)*(1-d_n)+Math.log(kv_precompute[x2][n2])*d_x*d_n);
+			//System.out.println(a+"	"+Bessel.k(x, n, false));
+			return a;//Bessel.k(x, n, false);
+		}
+		else{
+			return Bessel.k(x, n, false);
+		}*/
+		return Bessel.k(x, n, false);
+	}
+	
+	
+	public static double besselk_long(double n, double x){
+		return Bessel.k(x, n, false);
+	}
+	public static double delta_logGamma_long(double x){
+		return (Gamma.logGamma(x+0.0001)-Gamma.logGamma(x-0.0001))/(2*0.0001);
+	}
+	
+	
+	
+	
+	public static double model2(ArrayList<int[]> h, double a, double b){
+		double sum=0;
+		for (int i=0;i<h.size();i++){
+			double proxy=besselk_long(-h.get(i)[0] + a, 2*Math.sqrt(b));
 			//System.out.println(h.get(i)[0]+"	"+proxy);
 			if(proxy>0&&Double.isFinite(proxy)){
 				double x= Math.log(2) + ((h.get(i)[0] + a)/2.0)*Math.log(b) + Math.log(proxy) - Gamma.logGamma(h.get(i)[0]+1) - Gamma.logGamma(a);
@@ -1097,17 +1592,62 @@ public class CBASE_Solutions {
 		return -sum;		
 	}
 	
-	public static double model3(int [] s, double a, double b, double t, double w){
+	public static double model2_short(ArrayList<int[]> h, double a, double b){
 		double sum=0;
-		for (int i=0;i<s.length;i++){
-			sum += Math.log( Math.exp( Math.log(w * t) + (-1-s[i])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + s[i]*Math.log(b) + (-s[i]-a)*Math.log(1 + b) + Gamma.logGamma(s[i] + a) - Gamma.logGamma(s[i]+1) - Gamma.logGamma(a) ) );
+		for (int i=0;i<h.size();i++){
+			double proxy=besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b));
+			if(proxy>0&&Double.isFinite(proxy)){
+				double x= log(2) + ((h.get(i)[0] + a)/2.0)*log(b) + log(proxy) - logGamma(h.get(i)[0]+1) - logGamma(a);
+				if(Double.isFinite(x)){
+					sum+=x*h.get(i)[1];
+				}
+				
+			}
+		}
+		return -sum;			
+	}
+	
+	public static double[] model2_short_diff(ArrayList<int[]> h, double a, double b){
+		
+		double[] sum=new double[2];
+		for (int i=0;i<h.size();i++){
+			double proxy=besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b));
+			double proxy_diff_1=besselk_diff1_short(-h.get(i)[0] + a, 2*Math.sqrt(b));
+			double proxy_diff_2=besselk_diff2_short(-h.get(i)[0] + a, 2*Math.sqrt(b));
+			
+			if(proxy>0&&Double.isFinite(proxy)){
+				double x_1=  + 0.5*log(b) + delta_log(proxy)*proxy_diff_1  - delta_logGamma(a);
+				double x_2= ((h.get(i)[0] + a)/2.0)*delta_log(b) + delta_log(proxy)*proxy_diff_2/Math.sqrt(b);
+				
+				if(Double.isFinite(x_1)&&Double.isFinite(x_2)){
+					sum[0]-=x_1*h.get(i)[1];
+					sum[1]-=x_2*h.get(i)[1];
+				}
+			}
+		}
+		
+		return sum;			
+		
+	}
+	
+	
+	
+	public static double model3_short(ArrayList<int[]> h, double a, double b, double t, double w){
+		double sum=0;
+		for (int i=0;i<h.size();i++){
+			double x=  log(exp( log(w * t) + (-1-h.get(i)[0])*log(1 + t) ) + exp( log(1-w) + h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) -logGamma(a) )) ;
+			if(Double.isFinite(x)){
+				sum+=x*h.get(i)[1];
+			}
 		}
 		return -sum;
 	}
+	
 	public static double model3(ArrayList<int[]> h, double a, double b, double t, double w){
 		double sum=0;
 		for (int i=0;i<h.size();i++){
 			double x= Math.log( Math.exp( Math.log(w * t) + (-1-h.get(i)[0])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + h.get(i)[0]*Math.log(b) + (-h.get(i)[0]-a)*Math.log(1 + b) + Gamma.logGamma(h.get(i)[0] + a) - Gamma.logGamma(h.get(i)[0]+1) - Gamma.logGamma(a) ) );
+			
 			//System.out.println(h.get(i)[0]+"	"+x);
 			if(Double.isFinite(x)){
 				sum+=x*h.get(i)[1];
@@ -1116,46 +1656,67 @@ public class CBASE_Solutions {
 		return -sum;
 	}
 	
-	public static double model4(int [] s, double a, double b, double t, double w){
-		double sum=0;
-		for (int i=0;i<s.length;i++){
-			if (s[i]>25){
-				sum += Math.log( Math.exp( Math.log(w * t) + (-1 - s[i])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + Math.log(2) + ((s[i] + a)/2.0)*Math.log(b) + Math.log(besselk(-s[i] + a, 2*Math.sqrt(b))) - Gamma.logGamma(s[i] + 1) - Gamma.logGamma(a) ) );	
+	public static double[] model3_short_diff(ArrayList<int[]> h, double a, double b, double t, double w){
+		
+		double[] sum=new double[4];
+		
+		for (int i=0;i<h.size();i++){
+			double x1= delta_log( exp( log(w * t) + (-1-h.get(i)[0])*log(1 + t) ) + exp( log(1-w) + h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) -logGamma(a) ) );
+			double x2=  exp( log(1-w) + h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) -logGamma(a) ) ;
+			
+			double x2_3=  exp( log(w * t) + (-1-h.get(i)[0])*log(1 + t) );
+			double x2_4= exp(  (-1-h.get(i)[0])*log(1 + t) )*t  -exp(  h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) -logGamma(a) );
+			
+			double x3_1=  -log(1 + b) + delta_logGamma(h.get(i)[0] + a) -delta_logGamma(a);
+			double x3_2= h.get(i)[0]*delta_log(b) + (-h.get(i)[0]-a)*delta_log(1 + b) ;
+			double x3_3= delta_log(t) + (-1-h.get(i)[0])*delta_log(1 + t);
+			
+			
+			double x_1=x1*x2*x3_1;
+			double x_2=x1*x2*x3_2;
+			double x_3=x1*x2_3*x3_3;
+			double x_4=x1*x2_4;
+			
+			if(Double.isFinite(x_1)&&Double.isFinite(x_2)&&Double.isFinite(x_3)&&Double.isFinite(x_4)){
+				sum[0]-=x_1*h.get(i)[1];
+				sum[1]-=x_2*h.get(i)[1];
+				sum[2]-=x_3*h.get(i)[1];
+				sum[3]-=x_4*h.get(i)[1];
 			}
-			else{
-				sum += Math.log( Math.exp( Math.log(w * t) + (-1 - s[i])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + Math.log(2) + ((s[i] + a)/2.0)*Math.log(b) + Math.log(kv(-s[i] + a, 2*Math.sqrt(b))) - Gamma.logGamma(s[i] + 1) - Gamma.logGamma(a) ) );
-						
-			}
+			
 		}
-		return -sum;
+
+		return sum;
+		
 	}
 	
-	public static double model4(ArrayList<int[]> h, double a, double b, double t, double w){
+
+	
+	public static double model4_short(ArrayList<int[]> h, double a, double b, double t, double w){
 		double sum=0;
 		for (int i=0;i<h.size();i++){
-			if (h.get(i)[0]>25){
-				double x= Math.log( Math.exp( Math.log(w * t) + (-1 - h.get(i)[0])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + Math.log(2) + ((h.get(i)[0] + a)/2.0)*Math.log(b) + Math.log(besselk(-h.get(i)[0] + a, 2*Math.sqrt(b))) - Gamma.logGamma(h.get(i)[0] + 1) - Gamma.logGamma(a) ) );	
+				double x=  log(exp( log(w * t) + (-1 - h.get(i)[0])*log(1 + t) ) + exp( log(1-w) + log(2) + ((h.get(i)[0] + a)/2.0)*log(b) + log(besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b))) - logGamma(h.get(i)[0] + 1) - logGamma(a) ) );	
 				if(Double.isFinite(x)){
 					sum+=x*h.get(i)[1];
 				}
-			}
-			else{
-				double x= Math.log( Math.exp( Math.log(w * t) + (-1 - h.get(i)[0])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + Math.log(2) + ((h.get(i)[0] + a)/2.0)*Math.log(b) + Math.log(kv(-h.get(i)[0] + a, 2*Math.sqrt(b))) - Gamma.logGamma(h.get(i)[0] + 1) - Gamma.logGamma(a) ) );
-				if(Double.isFinite(x)){
-					sum+=x*h.get(i)[1];		
-				}
+			
+			
+		}
+		return -sum;
+	}
+
+	public static double model4(ArrayList<int[]> h, double a, double b, double t, double w){
+		double sum=0;
+		for (int i=0;i<h.size();i++){
+			double x= Math.log( Math.exp( Math.log(w * t) + (-1 - h.get(i)[0])*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + Math.log(2) + ((h.get(i)[0] + a)/2.0)*Math.log(b) + Math.log(besselk_long(-h.get(i)[0] + a, 2*Math.sqrt(b))) - Gamma.logGamma(h.get(i)[0] + 1) - Gamma.logGamma(a) ) );	
+			if(Double.isFinite(x)){
+				sum+=x*h.get(i)[1];
 			}
 		}
 		return -sum;
 	}
 	
-	public static double model5(int [] s, double a, double b, double g, double d, double w){
-		double sum=0;
-		for (int i=0;i<s.length;i++){
-			sum += Math.log( Math.exp( Math.log(w) + s[i]*Math.log(b) + (-s[i]-a)*Math.log(1 + b) + Gamma.logGamma(s[i] + a) - Gamma.logGamma(s[i]+1) - Gamma.logGamma(a) ) + Math.exp( Math.log(1-w) + s[i]*Math.log(d) + (-s[i]-g)*Math.log(1 + d) + Gamma.logGamma(s[i] + g) - Gamma.logGamma(s[i]+1) - Gamma.logGamma(g) ) );
-		}
-		return -sum;
-	}
+	
 	
 	public static double model5(ArrayList<int[]> h, double a, double b, double g, double d, double w){
 		double sum=0;
@@ -1168,46 +1729,187 @@ public class CBASE_Solutions {
 		return -sum;
 	}
 	
-	public static double model6(int [] s, double a, double b, double g, double d, double w){
+	public static double model5_short(ArrayList<int[]> h, double a, double b, double g, double d, double w){
 		double sum=0;
-		for (int i=0;i<s.length;i++){
-			if (s[i]>25){
-				sum += Math.log( (w * Math.exp(s[i]*Math.log(b) + (-s[i]-a)*Math.log(1 + b) + Gamma.logGamma(s[i] + a) - Gamma.logGamma(s[i]+1) - Gamma.logGamma(a))) + ((1-w) * Math.exp( Math.log(2) + ((s[i] + g)/2.0)*Math.log(d) + Math.log(besselk(-s[i] + g, 2*Math.sqrt(d))) - Gamma.logGamma(s[i] + 1) - Gamma.logGamma(g) ) ));		
-			}
-			else{
-				sum += Math.log( (w * Math.pow(b,s[i]) * Math.pow(1 + b,-s[i]-a) * Math.exp(Gamma.logGamma(s[i] + a) - Gamma.logGamma(s[i]+1) - Gamma.logGamma(a))) + ((1-w) * Math.exp( Math.log(2) + ((s[i] + g)/2.0)*Math.log(d) + Math.log(kv(-s[i] + g, 2*Math.sqrt(d))) - Gamma.logGamma(s[i] + 1) - Gamma.logGamma(g) ) ));
-
+		for (int i=0;i<h.size();i++){
+			double x=  log(exp( log(w) + h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a) ) + exp( log(1-w) + h.get(i)[0]*log(d) + (-h.get(i)[0]-g)*log(1 + d) + logGamma(h.get(i)[0] + g) - logGamma(h.get(i)[0]+1) - logGamma(g) )) ;
+			if(Double.isFinite(x)){
+				sum+=x*h.get(i)[1];
 			}
 		}
 		return -sum;
 	}
+	
+	public static double[] model4_short_diff(ArrayList<int[]> h, double a, double b, double t, double w){
+		
+		double[] sum=new double[4];
+		for (int i=0;i<h.size();i++){
+			double x1= delta_log( exp( log(w * t) + (-1 - h.get(i)[0])*log(1 + t) ) + exp( log(1-w) + log(2) + ((h.get(i)[0] + a)/2.0)*log(b) + log(besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b))) - logGamma(h.get(i)[0] + 1) - logGamma(a) ) );	
+			double x2_3= exp( log(w * t) + (-1 - h.get(i)[0])*log(1 + t) );	
+			double x2_4= exp( (-1 - h.get(i)[0])*log(1 + t) )*t  + exp(  log(2) + ((h.get(i)[0] + a)/2.0)*log(b) + log(besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b))) - logGamma(h.get(i)[0] + 1) - logGamma(a) )*(-1) ;	
+			double x2= exp( log(1-w) + log(2) + ((h.get(i)[0] + a)/2.0)*log(b) + log(besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b))) - logGamma(h.get(i)[0] + 1) - logGamma(a) ) ;
+				
+			double x3_1= 0.5*log(b) + delta_log(besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b)))*besselk_diff1_short(-h.get(i)[0] + a, 2*Math.sqrt(b)) - delta_logGamma(a)  ;	
+			double x3_2= ((h.get(i)[0] + a)/2.0)*delta_log(b) + delta_log(besselk_short(-h.get(i)[0] + a, 2*Math.sqrt(b)))*besselk_diff2_short(-h.get(i)[0] + a, 2*Math.sqrt(b))/Math.sqrt(b)   ;	
+			double x3_3= delta_log( t) + (-1 - h.get(i)[0])*delta_log(1 + t);	
+			
+			double x_1=x1*x2*x3_1;
+			double x_2=x1*x2*x3_2;
+			double x_3=x1*x2_3*x3_3;
+			double x_4=x1*x2_4;
+			
+			
+			
+			if(Double.isFinite(x_1)&&Double.isFinite(x_2)&&Double.isFinite(x_3)&&Double.isFinite(x_4)){
+				sum[0]-=x_1*h.get(i)[1];
+				sum[1]-=x_2*h.get(i)[1];
+				sum[2]-=x_3*h.get(i)[1];
+				sum[3]-=x_4*h.get(i)[1];
+			}
+			
+		}
+		return sum;
+	}
+	
+	public static double[] model5_short_diff(ArrayList<int[]> h, double a, double b, double g, double d, double w){
+		double[] sum=new double[5];
+		for (int i=0;i<h.size();i++){
+			double x1  = delta_log( exp( log(w) + h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a) ) + exp( log(1-w) + h.get(i)[0]*log(d) + (-h.get(i)[0]-g)*log(1 + d) + logGamma(h.get(i)[0] + g) - logGamma(h.get(i)[0]+1) - logGamma(g) ) );
+			double x2_12= exp( log(w) + h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a) );
+			double x2_34= exp( log(1-w) + h.get(i)[0]*log(d) + (-h.get(i)[0]-g)*log(1 + d) + logGamma(h.get(i)[0] + g) - logGamma(h.get(i)[0]+1) - logGamma(g) ) ;
+			double x2_5= exp(  h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a) ) -exp(  h.get(i)[0]*log(d) + (-h.get(i)[0]-g)*log(1 + d) + logGamma(h.get(i)[0] + g) - logGamma(h.get(i)[0]+1) - logGamma(g) );
+			
+			
+			double x3_1= -log(1 + b) + delta_logGamma(h.get(i)[0] + a)  - delta_logGamma(a) ;
+			double x3_2= h.get(i)[0]*delta_log(b) + (-h.get(i)[0]-a)*delta_log(1 + b)  ;
+			double x3_3= -log(1 + d) + delta_logGamma(h.get(i)[0] + g) - delta_logGamma(g)  ;
+			double x3_4= h.get(i)[0]*delta_log(d) + (-h.get(i)[0]-g)*delta_log(1 + d) ;
+			
+			
+			double x_1=x1*x2_12*x3_1;
+			double x_2=x1*x2_12*x3_2;
+			double x_3=x1*x2_34*x3_3;
+			double x_4=x1*x2_34*x3_4;
+			double x_5=x1*x2_5;
+			
+			if(Double.isFinite(x_1)&&Double.isFinite(x_2)&&Double.isFinite(x_3)&&Double.isFinite(x_4)&&Double.isFinite(x_5)){
+				sum[0]-=x_1*h.get(i)[1];
+				sum[1]-=x_2*h.get(i)[1];
+				sum[2]-=x_3*h.get(i)[1];
+				sum[3]-=x_4*h.get(i)[1];
+				sum[4]-=x_5*h.get(i)[1];
+			}
+			
+		}
+		
+		
+		return sum;
+		
+		
+	}
+	
 	
 	public static double model6(ArrayList<int[]> h, double a, double b, double g, double d, double w){
 		double sum=0;
 		for (int i=0;i<h.size();i++){
-			if (h.get(i)[0]>25){
-				double x= Math.log( (w * Math.exp(h.get(i)[0]*Math.log(b) + (-h.get(i)[0]-a)*Math.log(1 + b) + Gamma.logGamma(h.get(i)[0] + a) - Gamma.logGamma(h.get(i)[0]+1) - Gamma.logGamma(a))) + ((1-w) * Math.exp( Math.log(2) + ((h.get(i)[0] + g)/2.0)*Math.log(d) + Math.log(besselk(-h.get(i)[0] + g, 2*Math.sqrt(d))) - Gamma.logGamma(h.get(i)[0] + 1) - Gamma.logGamma(g) ) ));		
-				if(Double.isFinite(x)){
-					sum+=x*h.get(i)[1];
-				}
+			double x= Math.log( (w * Math.exp(h.get(i)[0]*Math.log(b) + (-h.get(i)[0]-a)*Math.log(1 + b) + Gamma.logGamma(h.get(i)[0] + a) - Gamma.logGamma(h.get(i)[0]+1) - Gamma.logGamma(a))) + ((1-w) * Math.exp( Math.log(2) + ((h.get(i)[0] + g)/2.0)*Math.log(d) + Math.log(besselk_long(-h.get(i)[0] + g, 2*Math.sqrt(d))) - Gamma.logGamma(h.get(i)[0] + 1) - Gamma.logGamma(g) ) ));		
+			
+			if(Double.isFinite(x)){
+				sum+=x*h.get(i)[1];
 			}
-			else{
-				double x= Math.log( (w * Math.pow(b,h.get(i)[0]) * Math.pow(1 + b,-h.get(i)[0]-a) * Math.exp(Gamma.logGamma(h.get(i)[0] + a) - Gamma.logGamma(h.get(i)[0]+1) - Gamma.logGamma(a))) + ((1-w) * Math.exp( Math.log(2) + ((h.get(i)[0] + g)/2.0)*Math.log(d) + Math.log(kv(-h.get(i)[0] + g, 2*Math.sqrt(d))) - Gamma.logGamma(h.get(i)[0] + 1) - Gamma.logGamma(g) ) ));
-				if(Double.isFinite(x)){
-					sum+=x*h.get(i)[1];
-				}
-			}
+				
+			
 		}
 		return -sum;
 	}
 	
+	public static double model6_short(ArrayList<int[]> h, double a, double b, double g, double d, double w){
+		double sum=0;
+		for (int i=0;i<h.size();i++){
+			//if (h.get(i)[0]>25){
+				double x=  (w * exp(h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a))) + ((1-w) * exp( log(2) + ((h.get(i)[0] + g)/2.0)*log(d) + log(besselk_short(-h.get(i)[0] + g, 2*Math.sqrt(d))) - logGamma(h.get(i)[0] + 1) - logGamma(g) ) );		
+				if(Double.isFinite(x)){
+					sum+=log(x)*h.get(i)[1];
+				}
+				
+			
+		}
+		return -sum;
+	}
+	
+	public static double[] model6_short_diff(ArrayList<int[]> h, double a, double b, double g, double d, double w){
+		double[] sum=new double[5];
+		
+		for (int i=0;i<h.size();i++){
+			double x1  = delta_log( (w * exp(h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a))) + ((1-w) * exp( log(2) + ((h.get(i)[0] + g)/2.0)*log(d) + log(besselk_short(-h.get(i)[0] + g, 2*Math.sqrt(d))) - logGamma(h.get(i)[0] + 1) - logGamma(g) ) ));		
+			
+			double x2_12= w * exp(h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a)) ;		
+			double x2_34= (1-w) * exp( log(2) + ((h.get(i)[0] + g)/2.0)*log(d) + log(besselk_short(-h.get(i)[0] + g, 2*Math.sqrt(d))) - logGamma(h.get(i)[0] + 1) - logGamma(g)) ;		
+			double x2_5= exp(h.get(i)[0]*log(b) + (-h.get(i)[0]-a)*log(1 + b) + logGamma(h.get(i)[0] + a) - logGamma(h.get(i)[0]+1) - logGamma(a)) -exp( log(2) + ((h.get(i)[0] + g)/2.0)*log(d) + log(besselk_short(-h.get(i)[0] + g, 2*Math.sqrt(d))) - logGamma(h.get(i)[0] + 1) - logGamma(g)) ;		
+			
+			double x3_1= -log(1 + b) + delta_logGamma(h.get(i)[0] + a) - delta_logGamma(a) ;		
+			double x3_2= h.get(i)[0]*delta_log(b) + (-h.get(i)[0]-a)*delta_log(1 + b) ;		
+			double x3_3=  0.5*log(d) + delta_log(besselk_short(-h.get(i)[0] + g, 2*Math.sqrt(d)))*besselk_diff1_short(-h.get(i)[0] + g, 2*Math.sqrt(d))  - delta_logGamma(g) ;		
+			double x3_4=  ((h.get(i)[0] + g)/2.0)*delta_log(d) + delta_log(besselk_short(-h.get(i)[0] + g, 2*Math.sqrt(d)))*besselk_diff2_short(-h.get(i)[0] + g, 2*Math.sqrt(d))/Math.sqrt(d) ;		
+			
+			
+			double x_1=x1*x2_12*x3_1;
+			double x_2=x1*x2_12*x3_2;
+			double x_3=x1*x2_34*x3_3;
+			double x_4=x1*x2_34*x3_4;
+			double x_5=x1*x2_5;
+			
+			
+			if(Double.isFinite(x_1)&&Double.isFinite(x_2)&&Double.isFinite(x_3)&&Double.isFinite(x_4)&&Double.isFinite(x_5)){
+				sum[0]-=x_1*h.get(i)[1];
+				sum[1]-=x_2*h.get(i)[1];
+				sum[2]-=x_3*h.get(i)[1];
+				sum[3]-=x_4*h.get(i)[1];
+				sum[4]-=x_5*h.get(i)[1];
+				
+				
+			}
+
+
+		}
+		
+		
+		return sum;
+		
+	}
+	
+	
 	public static double uniform (double a, double b){
 		return a+Math.random()*(b-a);
 	}
-	public static double besselk(double n, double x){
-		return Bessel.k(x, n, false);
+	
+	public static double model1_density(int h, double a, double b){
+		 return Math.exp(h*Math.log(b) + (-h-a)*Math.log(1 + b) + Gamma.logGamma(h + a) -  Gamma.logGamma(h+1) -  Gamma.logGamma(a));
 	}
+	
+	public static double model2_density(int h, double a, double b){//TODO: bessel
+		double proxy=besselk_long(-h + a, 2*Math.sqrt(b));
+		return Math.exp(Math.log(2) + ((h + a)/2.0)*Math.log(b) + Math.log(proxy) - Gamma.logGamma(h+1) - Gamma.logGamma(a));
+	}
+	
+	public static double model3_density(int h, double a, double b, double t, double w){
+		return Math.exp(Math.log( Math.exp( Math.log(w * t) + (-1-h)*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + h*Math.log(b) + (-h-a)*Math.log(1 + b) + Gamma.logGamma(h + a) - Gamma.logGamma(h+1) - Gamma.logGamma(a) ) ));
+	}
+	
+	public static double model4_density(int h, double a, double b, double t, double w){
+		return Math.exp(Math.log( Math.exp( Math.log(w * t) + (-1 - h)*Math.log(1 + t) ) + Math.exp( Math.log(1-w) + Math.log(2) + ((h + a)/2.0)*Math.log(b) + Math.log(besselk_long(-h + a, 2*Math.sqrt(b))) - Gamma.logGamma(h + 1) - Gamma.logGamma(a) ) ));	
+	}
+	
+	public static double model5_density(int h, double a, double b, double g, double d, double w){
+		return  Math.exp(Math.log( Math.exp( Math.log(w) + h*Math.log(b) + (-h-a)*Math.log(1 + b) + Gamma.logGamma(h + a) - Gamma.logGamma(h+1) - Gamma.logGamma(a) ) + Math.exp( Math.log(1-w) + h*Math.log(d) + (-h-g)*Math.log(1 + d) + Gamma.logGamma(h + g) - Gamma.logGamma(h+1) - Gamma.logGamma(g) ) ));
+	}
+	
+	public static double model6_density(int h, double a, double b, double g, double d, double w){
+		return Math.exp(Math.log( (w * Math.exp(h*Math.log(b) + (-h-a)*Math.log(1 + b) + Gamma.logGamma(h + a) - Gamma.logGamma(h+1) - Gamma.logGamma(a))) + ((1-w) * Math.exp( Math.log(2) + ((h + g)/2.0)*Math.log(d) + Math.log(besselk_long(-h + g, 2*Math.sqrt(d))) - Gamma.logGamma(h + 1) - Gamma.logGamma(g) ) )));		
+	}
+	
+	/*
 	public static double kv(double n, double x){
 		return Bessel.k(x, n, false);
-	}
+	}*/
 }

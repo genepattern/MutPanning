@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 8										*
+ * MutPanning 									*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -36,6 +36,7 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Hashtable;
 
 public class CountDestructiveMutations {
 
@@ -44,6 +45,7 @@ public class CountDestructiveMutations {
 	static String[] chr2={"1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24"};	
 
 	static String file_align="";
+	static String file_annotation="";
 	static String file_maf="";
 	static String file_entities="";
 	static String file_genes="";
@@ -83,17 +85,43 @@ public class CountDestructiveMutations {
 			"SPRY3",
 			"ZBED1"
 		};
-	
+	static int[] chr_length={
+			249250621,
+			243199373,
+			198022430,
+			191154276,
+			180915260,
+			171115067,
+			159138663,
+			146364022,
+			141213431,
+			135534747,
+			135006516,
+			133851895,
+			115169878,
+			107349540,
+			102531392,
+			90354753,
+			81195210,
+			78077248,
+			59128983,
+			63025520,
+			48129895,
+			51304566,
+			155270560,
+			59373566
+		};
 	
 	/*
 	 * argument0:root file
 	 * argument1: maf file
 	 * argument2: sample file
-	 * argument3: path to the Hg19 folder
+	 * 
 	 */
 	
 	public static void main(String[] args){
 		
+		file_annotation=args[3]+"AnnotationHg19/Annotation_chr";
 		file_align=args[0]+"AlignHg19/AlignHg19Chr";
 		file_maf=args[1];
 		file_entities=args[2];
@@ -130,7 +158,7 @@ public class CountDestructiveMutations {
 				
 				samples=new ArrayList[entities.length];
 				samples_index=new ArrayList[entities.length];
-		
+		//System.out.println("X");
 		try{
 			
 			//read samples and their index
@@ -150,7 +178,7 @@ public class CountDestructiveMutations {
 				samples_index[ii].add(Integer.parseInt(t[index_header[0]]));
 			}
 			input.close();
-			
+			//System.out.println("XX");
 			//read genes together with their coordinates
 			for (int i=0;i<genes_chr.length;i++){
 				genes_chr[i]=new ArrayList<Gene>();
@@ -180,7 +208,7 @@ public class CountDestructiveMutations {
 					genes_chr[i].get(j).end=max(genes_chr[i].get(j).coord);
 				}
 			}
-			
+			//System.out.println("XXX");
 			
 			//initalize counter arrays
 			for (int i=0;i<chr.length;i++){
@@ -192,6 +220,30 @@ public class CountDestructiveMutations {
 				n_nonsense[i]=new int[genes_chr[i].size()][entities.length+1];
 				
 			}
+			System.out.println("XXX");
+			
+			Hashtable<String,Integer> table_samples=new Hashtable<String,Integer>();
+			for (int i=0;i<samples.length;i++){
+				for (int j=0;j<samples[i].size();j++){
+					table_samples.put(samples[i].get(j), i);
+				}
+			}
+			
+			
+			ArrayList<Integer> i_gene[][]=new ArrayList[chr.length][];
+			for (int i=0;i<i_gene.length;i++){
+				i_gene[i]=new ArrayList[1+chr_length[i]/10000];
+				for (int j=0;j<i_gene[i].length;j++){
+					i_gene[i][j]=new ArrayList<Integer>();
+				}
+				for (int j=0;j<genes_chr[i].size();j++){
+					for (int k=genes_chr[i].get(j).start/10000;k<=genes_chr[i].get(j).end/10000;k++){
+						i_gene[i][k].add(j);
+					}
+				}
+				
+			}
+			
 			
 			//go through maf file and extract count information 
 			in=new FileInputStream(file_maf);
@@ -201,12 +253,12 @@ public class CountDestructiveMutations {
 			while((s=input.readLine())!=null){
 				String[] t=s.split("	");
 				
-				int jj=index(t[index_header_m[10]],samples);
+				int jj=table_samples.get(t[index_header_m[10]]).intValue();//index(,samples);
 				int chr_index=index(t[index_header_m[1]],chr,chr2);
 				if(chr_index==-1){
 					continue;
 				}
-				ArrayList<Integer> gene_index=index(Integer.parseInt(t[index_header_m[2]]),genes_chr[chr_index]);
+				ArrayList<Integer> gene_index=index(Integer.parseInt(t[index_header_m[2]]),genes_chr[chr_index],i_gene[chr_index][Integer.parseInt(t[index_header_m[2]])/10000]);
 				String ref=t[index_header_m[7]].toUpperCase();
 				String tumor=t[index_header_m[9]].toUpperCase();
 				String type=t[index_header_m[5]];
@@ -255,10 +307,16 @@ public class CountDestructiveMutations {
 				}
 			}
 			input.close();
+			System.out.println("XXX");
 			
 			
 			//go through the reference sequence of each chromosome and
 			//look for nonsynonymous mutations based on the reference seq
+			for (int i=0;i<chr.length;i++){
+				System.out.println(chr[i]);
+				run_subthread(i);
+			}
+			/*
 			Subthread[] threads=new Subthread[chr.length];
 			for (int i=0;i<threads.length;i++){
 				threads[i]=new Subthread();
@@ -278,7 +336,7 @@ public class CountDestructiveMutations {
 					}
 				}
 			}while(!all_done);
-			
+			*/
 			//output for each gene of the number of all mutations  and the number of destructive mutaitons
 			for (int k=0;k<entities.length;k++){
 				FileWriter out=new FileWriter(file_out+entities[k]+".txt");
@@ -345,11 +403,11 @@ public class CountDestructiveMutations {
 		return indices;
 	}
 	
-	public static ArrayList<Integer> index(int pos,ArrayList<Gene> genes){
+	public static ArrayList<Integer> index(int pos,ArrayList<Gene> genes,ArrayList<Integer> a){
 		ArrayList<Integer> index=new ArrayList<Integer>();
-		for (int i=0;i<genes.size();i++){
-			if(genes.get(i).contains(pos)){
-				index.add(i);
+		for (int ii=0;ii<a.size();ii++){
+			if(genes.get(a.get(ii)).contains(pos)){
+				index.add(a.get(ii));
 			}
 		}
 		return index;
@@ -434,133 +492,346 @@ public class CountDestructiveMutations {
 	
 	//go through the reference sequence of each gene and 
 	//search for nonsynonymous mutations
-	private static class Subthread extends Thread{
-		volatile boolean done=false;
-		int c=-1;
-		
-		public void run(){
-			System.out.println("start "+chr[c]);
-			try{
-				ArrayList<Integer> position=new ArrayList<Integer>();
-				ArrayList<String> nucl=new ArrayList<String>();
-				ArrayList<Double> coverage=new ArrayList<Double>();
-				ArrayList<int[][]> count=new ArrayList<int[][]>();
-				
-				FileInputStream in2=new FileInputStream(file_align+chr[c]+".txt");
-				DataInputStream inn2=new DataInputStream(in2);
-				BufferedReader input2= new BufferedReader(new InputStreamReader(inn2));
-				
-				for (int nn=0;nn<genes_chr[c].size();nn++){
-					int ii=0;
-					if(position.size()>0){
-						while(ii<position.size()&&position.get(ii)<genes_chr[c].get(nn).start){
-							ii++;
-						}
-					}
-					if(ii>0){
-						for (int i=ii-1;i>=0;i--){
-							nucl.remove(i);
-							position.remove(i);
-							coverage.remove(i);
-							count.remove(i);
-							
-						}
-					}
-					
-					String s2="";
-					while ((s2=input2.readLine())!=null){
-						
-						
-						String[] t2=s2.split("	");
-						
-						
-						String ref_as="";
-						String mut_as1="";
-						String mut_as2="";
-						String mut_as3="";
-						if(t2.length>6){
-							ref_as=t2[6];
-							mut_as1=t2[8];
-							mut_as2=t2[9];
-							mut_as3=t2[10];
-						}
-						int[] nonsense=new int[3];
-						if(ref_as.equals("*")||mut_as1.equals("*")){
-							nonsense[0]=1;
-						}
-						if(ref_as.equals("*")||mut_as2.equals("*")){
-							nonsense[1]=1;
-						}
-						if(ref_as.equals("*")||mut_as3.equals("*")){
-							nonsense[2]=1;
-						}
-						
-						
-						int[] index1=new int[0];
-						if(t2.length>3&&!t2[3].equals("")){
-							index1=integer(t2[3].split(";"));
-						}
-								
-						int[] index2=new int[0];
-						if(t2.length>4&&!t2[4].equals("")){
-							index2=integer(t2[4].split(";"));
-						}
-						int[] index3=new int[0];
-						if(t2.length>5&&!t2[5].equals("")){
-							index3=integer(t2[5].split(";"));
-						}
-						int[][] indices=new int[][]{index1,index2,index3};
-						
-						
-						int[][] count_local=new int[entities.length+1][2];
-						for (int k=0;k<indices.length;k++){
-							for (int i=0;i<samples.length;i++){
-								count_local[i][nonsense[k]]+=overlap(indices[k],samples_index[i]);
-							}
-							count_local[count_local.length-1][nonsense[k]]=indices[k].length;
-						}
-						
-						position.add(Integer.parseInt(t2[0]));
-						nucl.add(t2[1]);
-						coverage.add(Double.parseDouble(t2[2]));
-						count.add(count_local);
-						
-						
-						
-						if(Integer.parseInt(t2[0])>=genes_chr[c].get(nn).end){
-							break;
-						}
-					}
-					
-					
-					for (int i=0;i<position.size();i++){
-						
-						if(genes_chr[c].get(nn).contains(position.get(i))){
-							for (int k=0;k<mutations_snv_all[c][nn].length;k++){
-								mutations_snv_all[c][nn][k]+=count.get(i)[k][0]+count.get(i)[k][1];
-								mutations_snv_nonsense[c][nn][k]+=count.get(i)[k][1];
-							}
-						}
-					}
-					
-					
-				}
-				input2.close();
-				
-			}
-			catch(Exception e){
-				
-				StackTraceElement[] aa=e.getStackTrace();
-				for (int i=0;i<aa.length;i++){
-					System.out.println(i+"	"+aa[i].getLineNumber());
-				}
-				System.out.println(e);
-			}
-			System.out.println("done "+chr[c]);
-			done=true;
-		}
-	}
 	
+	
+	
+	/*
+	public static void run_subthread(int c){
+		System.out.println("start "+chr[c]);
+		try{
+			Hashtable<Integer,Integer> table_samples_index=new Hashtable<Integer,Integer>();
+			for (int i=0;i<samples_index.length;i++){
+				for (int j=0;j<samples_index[i].size();j++){
+					table_samples_index.put(samples_index[i].get(j),i);
+				}
+			}
+			
+			ArrayList<Integer> position=new ArrayList<Integer>();
+	//		ArrayList<String> nucl=new ArrayList<String>();
+	//		ArrayList<Double> coverage=new ArrayList<Double>();
+			ArrayList<int[][]> count=new ArrayList<int[][]>();
+			
+			FileInputStream in2=new FileInputStream(file_align+chr[c]+".txt");
+			DataInputStream inn2=new DataInputStream(in2);
+			BufferedReader input2= new BufferedReader(new InputStreamReader(inn2));
+			
+			for (int nn=0;nn<genes_chr[c].size();nn++){
+				System.out.println(nn+"/"+genes_chr[c].size());
+				int ii=0;
+				if(position.size()>0){
+					while(ii<position.size()&&position.get(ii)<genes_chr[c].get(nn).start){
+						ii++;
+					}
+				}
+				if(ii>0){
+					for (int i=ii-1;i>=0;i--){
+						//nucl.remove(i);
+						position.remove(i);
+						//coverage.remove(i);
+						count.remove(i);
+						
+					}
+				}
+				
+				String s2="";
+				while ((s2=input2.readLine())!=null){
+					
+					
+					String[] t2=s2.split("	");
+					
+					
+					String ref_as="";
+					String mut_as1="";
+					String mut_as2="";
+					String mut_as3="";
+					if(t2.length>6){
+						ref_as=t2[6];
+						mut_as1=t2[8];
+						mut_as2=t2[9];
+						mut_as3=t2[10];
+					}
+					int[] nonsense=new int[3];
+					if(ref_as.equals("*")||mut_as1.equals("*")){
+						nonsense[0]=1;
+					}
+					if(ref_as.equals("*")||mut_as2.equals("*")){
+						nonsense[1]=1;
+					}
+					if(ref_as.equals("*")||mut_as3.equals("*")){
+						nonsense[2]=1;
+					}
+					
+					
+					int[] index1=new int[0];
+					if(t2.length>3&&!t2[3].equals("")){
+						index1=integer(t2[3].split(";"));
+					}
+							
+					int[] index2=new int[0];
+					if(t2.length>4&&!t2[4].equals("")){
+						index2=integer(t2[4].split(";"));
+					}
+					int[] index3=new int[0];
+					if(t2.length>5&&!t2[5].equals("")){
+						index3=integer(t2[5].split(";"));
+					}
+					int[][] indices=new int[][]{index1,index2,index3};
+					
+					
+					int[][] count_local=new int[entities.length+1][2];
+					for (int k=0;k<indices.length;k++){
+						
+						for (int l=0;l<indices[k].length;l++){
+							count_local[table_samples_index.get(indices[k][l])][nonsense[k]]++;
+						}
+						//for (int i=0;i<samples.length;i++){
+							//count_local[i][nonsense[k]]+=overlap(indices[k],samples_index[i]);
+						//}
+						count_local[count_local.length-1][nonsense[k]]=indices[k].length;
+					}
+					count.add(count_local);
+					
+					
+					position.add(Integer.parseInt(t2[0]));
+					//nucl.add(t2[1]);
+					//coverage.add(Double.parseDouble(t2[2]));
+					
+					
+					if(Integer.parseInt(t2[0])>=genes_chr[c].get(nn).end){
+						break;
+					}
+				}
+				
+				
+				for (int i=0;i<position.size();i++){
+					
+					if(genes_chr[c].get(nn).contains(position.get(i))){
+						for (int k=0;k<mutations_snv_all[c][nn].length;k++){
+							mutations_snv_all[c][nn][k]+=count.get(i)[k][0]+count.get(i)[k][1];
+							mutations_snv_nonsense[c][nn][k]+=count.get(i)[k][1];
+						}
+					}
+				}
+				
+				
+			}
+			input2.close();
+			
+		}
+		catch(Exception e){
+			
+			StackTraceElement[] aa=e.getStackTrace();
+			for (int i=0;i<aa.length;i++){
+				System.out.println(i+"	"+aa[i].getLineNumber());
+			}
+			System.out.println(e);
+		}
+		System.out.println("done "+chr[c]);
+
+	}
+	*/
+	
+	public static void run_subthread(int c){
+		System.out.println("start "+chr[c]);
+		try{
+			Hashtable<Integer,Integer> table_samples_index=new Hashtable<Integer,Integer>();
+			for (int i=0;i<samples_index.length;i++){
+				for (int j=0;j<samples_index[i].size();j++){
+					table_samples_index.put(samples_index[i].get(j),i);
+				}
+			}
+			
+			ArrayList<Integer> position=new ArrayList<Integer>();
+			ArrayList<Integer> nonsense=new ArrayList<Integer>();
+			ArrayList<Integer> entity=new ArrayList<Integer>();
+			
+	//		ArrayList<String> nucl=new ArrayList<String>();
+	//		ArrayList<Double> coverage=new ArrayList<Double>();
+	//		ArrayList<int[][]> count=new ArrayList<int[][]>();
+			
+			FileInputStream in2=new FileInputStream(file_align+chr[c]+".txt");
+			DataInputStream inn2=new DataInputStream(in2);
+			BufferedReader input2= new BufferedReader(new InputStreamReader(inn2));
+			
+			FileInputStream in3=new FileInputStream(file_annotation+chr[c]+".txt");
+			DataInputStream inn3=new DataInputStream(in3);
+			BufferedReader input3= new BufferedReader(new InputStreamReader(inn3));
+			
+			
+			for (int nn=0;nn<genes_chr[c].size();nn++){
+				//System.out.println(nn+"/"+genes_chr[c].size());
+				int ii=0;
+				if(position.size()>0){
+					while(ii<position.size()&&position.get(ii)<genes_chr[c].get(nn).start){
+						ii++;
+					}
+				}
+				if(ii>0){
+					for (int i=ii-1;i>=0;i--){
+						//nucl.remove(i);
+						position.remove(i);
+						nonsense.remove(i);
+						entity.remove(i);
+						//coverage.remove(i);
+						//count.remove(i);
+						
+					}
+				}
+				
+				String s2="";
+				while ((s2=input2.readLine())!=null){
+					
+					
+					String[] t2=s2.split("	");
+					String[] t3=input3.readLine().split("	");
+					
+					
+					String ref_as="";
+					String mut_as1="";
+					String mut_as2="";
+					String mut_as3="";
+					if(t3.length>3){
+						ref_as=t3[3];
+						mut_as1=t3[5];
+						mut_as2=t3[6];
+						mut_as3=t3[7];
+					}
+					
+					
+					/*
+					int[] nonsense=new int[3];
+					if(ref_as.equals("*")||mut_as1.equals("*")){
+						nonsense[0]=1;
+					}
+					if(ref_as.equals("*")||mut_as2.equals("*")){
+						nonsense[1]=1;
+					}
+					if(ref_as.equals("*")||mut_as3.equals("*")){
+						nonsense[2]=1;
+					}*/
+					
+					int nonsense1=0;
+					int nonsense2=0;
+					int nonsense3=0;
+					if(ref_as.equals("*")||mut_as1.equals("*")){
+						nonsense1=1;
+					}
+					if(ref_as.equals("*")||mut_as2.equals("*")){
+						nonsense2=1;
+					}
+					if(ref_as.equals("*")||mut_as3.equals("*")){
+						nonsense3=1;
+					}
+					
+					if(t2.length>0&&!t2[0].equals("")){
+						String[] tt=t2[0].split(";");
+						for (int i=0;i<tt.length;i++){
+							entity.add(table_samples_index.get(Integer.parseInt(tt[i])));
+							nonsense.add(nonsense1);
+							position.add(Integer.parseInt(t3[0]));
+						}
+					}
+					if(t2.length>1&&!t2[1].equals("")){
+						String[] tt=t2[1].split(";");
+						for (int i=0;i<tt.length;i++){
+							entity.add(table_samples_index.get(Integer.parseInt(tt[i])));
+							nonsense.add(nonsense2);
+							position.add(Integer.parseInt(t3[0]));
+						}
+					}
+					if(t2.length>2&&!t2[2].equals("")){
+						String[] tt=t2[2].split(";");
+						for (int i=0;i<tt.length;i++){
+							entity.add(table_samples_index.get(Integer.parseInt(tt[i])));
+							nonsense.add(nonsense3);
+							position.add(Integer.parseInt(t3[0]));
+						}
+					}
+					
+					/*
+					String[] tt1=t2[3].split(";");
+					String[] tt2=t2[4].split(";");
+					String[] tt3=t2[5].split(";");
+					
+					
+					
+					
+					int[] index1=new int[0];
+					if(t2.length>3&&!t2[3].equals("")){
+						index1=integer(t2[3].split(";"));
+					}
+							
+					int[] index2=new int[0];
+					if(t2.length>4&&!t2[4].equals("")){
+						index2=integer(t2[4].split(";"));
+					}
+					int[] index3=new int[0];
+					if(t2.length>5&&!t2[5].equals("")){
+						index3=integer(t2[5].split(";"));
+					}
+					int[][] indices=new int[][]{index1,index2,index3};
+					
+					
+					int[][] count_local=new int[entities.length+1][2];
+					for (int k=0;k<indices.length;k++){
+						
+						for (int l=0;l<indices[k].length;l++){
+							count_local[table_samples_index.get(indices[k][l])][nonsense[k]]++;
+						}
+						//for (int i=0;i<samples.length;i++){
+							//count_local[i][nonsense[k]]+=overlap(indices[k],samples_index[i]);
+						//}
+						count_local[count_local.length-1][nonsense[k]]=indices[k].length;
+					}
+					count.add(count_local);
+					
+					
+					position.add(Integer.parseInt(t2[0]));
+					//nucl.add(t2[1]);
+					//coverage.add(Double.parseDouble(t2[2]));
+					*/
+					
+					if(Integer.parseInt(t3[0])>=genes_chr[c].get(nn).end){
+						break;
+					}
+				}
+				
+				
+				for (int i=0;i<position.size();i++){
+					if(genes_chr[c].get(nn).contains(position.get(i))){
+						mutations_snv_all[c][nn][entity.get(i)]++;
+						if(nonsense.get(i)==1){
+							mutations_snv_nonsense[c][nn][entity.get(i)]++;
+						}
+						mutations_snv_all[c][nn][entities.length]++;
+						if(nonsense.get(i)==1){
+							mutations_snv_nonsense[c][nn][entities.length]++;
+						}
+						
+						/*
+						for (int k=0;k<mutations_snv_all[c][nn].length;k++){
+							mutations_snv_all[c][nn][k]+=count.get(i)[k][0]+count.get(i)[k][1];
+							mutations_snv_nonsense[c][nn][k]+=count.get(i)[k][1];
+						}*/
+					}
+				}
+				
+				
+			}
+			input2.close();
+			input3.close();
+		}
+		catch(Exception e){
+			
+			StackTraceElement[] aa=e.getStackTrace();
+			for (int i=0;i<aa.length;i++){
+				System.out.println(i+"	"+aa[i].getLineNumber());
+			}
+			System.out.println(e);
+		}
+		System.out.println("done "+chr[c]);
+
+	}
 
 	public static int[] integer(String[] s){
 		int[] a=new int[s.length];

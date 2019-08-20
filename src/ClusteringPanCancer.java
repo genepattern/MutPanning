@@ -1,9 +1,9 @@
 /************************************************************           
- * MutPanning - Step 5									*
+ * MutPanning 												*
  * 															*   
  * Author:		Felix Dietlein								*   
  *															*   
- * Copyright:	(C) 2018 									*   
+ * Copyright:	(C) 2019 									*   
  *															*   
  * License:		Public Domain								*   
  *															*   
@@ -11,11 +11,7 @@
  *			separately for pan cancer. Starting from the	*
  *			clusters generated on the cancer types, this	*
  *			scripts finishes the clusters for the pan		*
- *			cancer cohort. Note that						*
- *			as the distance metrics are time-intensive to 	*
- *			compute the initial calculation of the distance	*
- *			metrics and its update are distributed across	*
- *			30 CPUs in order to accelerate this process.	*
+ *			cancer cohort. 									*
  * 															*   
  *************************************************************/
 
@@ -37,7 +33,6 @@ import org.apache.commons.math3.special.Gamma;
 
 public class ClusteringPanCancer {
 
-	static int n_processor=0;
 	static String[] entities=new String[0];
 	static String file_clusters="";
 	static String file_type="";
@@ -52,10 +47,8 @@ public class ClusteringPanCancer {
 
 	static String[] index_header_samples={"ID","Sample","Cohort"};
 	
-	static ArrayList<String> names_type=new ArrayList<String>();
-	static ArrayList<int[]> type=new ArrayList<int[]>();
-	static ArrayList<int[]> cosmic=new ArrayList<int[]>();
-	static ArrayList<int[][][]> affinity=new ArrayList<int[][][]>();
+	/*
+	
 	
 	static ArrayList<ArrayList<Integer>> cluster_type=new ArrayList<ArrayList<Integer>>();
 	static ArrayList<ArrayList<Integer>> cluster_context=new ArrayList<ArrayList<Integer>>();
@@ -66,11 +59,14 @@ public class ClusteringPanCancer {
 	static double[][] distance_type=new double[0][0];
 	static double[][] distance_context=new double[0][0];
 	
-	static double[][][] ref=new double[20][2][4];
 	
-	static double[] gamma=new double[50000+1];
 	
 	static double[] vector_context=new double[0];
+	*/
+	
+	static double[] gamma=new double[50000+1];
+	static double[][][] ref=new double[20][2][4];
+	
 	
 	/*
 	 * argument0: root file
@@ -78,10 +74,8 @@ public class ClusteringPanCancer {
 	 *	argument2: min no. samples per cluster
 	 * argument3: min no. mutations per cluster
 	 * argument4: no. processors to distribute the workload
-	* argument5: path to the Hg19 folder
 	 */
 	public static void main (String[] args){
-		n_processor=Integer.parseInt(args[4]);
 		int threshold_samples=Integer.parseInt(args[2]);
 		int threshold_mutations=Integer.parseInt(args[3]);
 		
@@ -90,7 +84,7 @@ public class ClusteringPanCancer {
 		file_cosmic=args[0]+"AffinityCounts/CosmicCount.txt";
 		
 		file_affinity=args[0]+"AffinityCounts/AffinityCount.txt";
-		file_reference=args[5]+"FileReferenceCount.txt";
+		file_reference=args[4]+"FileReferenceCount.txt";
 		
 		file_out_cosmic=args[0]+"ClusteringComplete/ClusteringComplete_Cosmic.txt";
 		file_out_affinity=args[0]+"ClusteringComplete/ClusteringComplete_Affinity.txt";
@@ -202,6 +196,10 @@ public class ClusteringPanCancer {
 				input.close();
 			}
 			
+			ArrayList<String> names_type=new ArrayList<String>();
+			ArrayList<int[]> type=new ArrayList<int[]>();
+			ArrayList<int[]> cosmic=new ArrayList<int[]>();
+			ArrayList<int[][][]> affinity=new ArrayList<int[][][]>();
 			
 			//read in the count vectors for the samples
 			in=new FileInputStream(file_type);
@@ -266,10 +264,13 @@ public class ClusteringPanCancer {
 			input2.close();
 			
 			
-			cluster_type=new ArrayList<ArrayList<Integer>>();
-			cluster_context=new ArrayList<ArrayList<Integer>>();
-			entities_type=new ArrayList<ArrayList<String>>();
-			entities_context=new ArrayList<ArrayList<String>>();
+			ArrayList<ArrayList<Integer>> cluster_type=new ArrayList<ArrayList<Integer>>();
+			ArrayList<ArrayList<Integer>> cluster_context=new ArrayList<ArrayList<Integer>>();
+			ArrayList<int[]> cluster_type_sum=new ArrayList<int[]>();
+			ArrayList<int[][][]> cluster_context_sum=new ArrayList<int[][][]>();
+			
+			ArrayList<ArrayList<String>> entities_type=new ArrayList<ArrayList<String>>();
+			ArrayList<ArrayList<String>> entities_context=new ArrayList<ArrayList<String>>();
 			
 			//for (int i=0;i<clusters_all_type.size();i++){
 			for (int i=0;i<clusters_all_both.size();i++){
@@ -297,11 +298,38 @@ public class ClusteringPanCancer {
 				
 			}
 			
+			for (int i=0;i<cluster_type.size();i++){
+				int[] x=new int[6];
+				for (int j=0;j<cluster_type.get(i).size();j++){
+					for (int k=0;k<type.get(cluster_type.get(i).get(j)).length;k++){
+						x[k]+=type.get(cluster_type.get(i).get(j))[k];
+					}
+				}
+				cluster_type_sum.add(x);
+			}
 			
-			distance_type=new double[cluster_type.size()][cluster_type.size()];
-			distance_context=new double[cluster_context.size()][cluster_context.size()];
+			for (int i=0;i<cluster_context.size();i++){
+				int[][][] x=new int[20][6][4];
+				for (int j=0;j<cluster_context.get(i).size();j++){
+					for (int k1=0;k1<affinity.get(cluster_context.get(i).get(j)).length;k1++){
+						for (int k2=0;k2<affinity.get(cluster_context.get(i).get(j))[k1].length;k2++){
+							for (int k3=0;k3<affinity.get(cluster_context.get(i).get(j))[k1][k2].length;k3++){
+								x[k1][k2][k3]+=affinity.get(cluster_context.get(i).get(j))[k1][k2][k3];
+							}
+						}
+					}
+				}
+				cluster_context_sum.add(x);
+			}
+			
+			System.out.println("XXXX");
+			//double[][] distance_type=new double[cluster_type.size()][cluster_type.size()];
+			//double[][] distance_context=new double[cluster_context.size()][cluster_context.size()];
 			//in parallel to the previous script initialization of the distance matrix in parallel
-			initialize();
+			double[][] distance_type=initialize_type(cluster_type_sum);
+			System.out.println("XXXX");
+			double[][] distance_context=initialize_context(cluster_context_sum);
+			System.out.println("XXXX");
 			
 			
 			ArrayList<ArrayList<Double>> dist_type=new ArrayList<ArrayList<Double>>();
@@ -339,27 +367,35 @@ public class ClusteringPanCancer {
 					break;
 				}
 				
-				ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
-				combi_cluster.addAll(cluster_type.get(i_max));
-				combi_cluster.addAll(cluster_type.get(j_max));
+				//ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
+				//combi_cluster.addAll(cluster_type.get(i_max));
+				//combi_cluster.addAll(cluster_type.get(j_max));
+				
+				dist_type.remove(j_max);
+				for (int i=0;i<dist_type.size();i++){
+					dist_type.get(i).remove(j_max);
+				}
+				cluster_type.get(i_max).addAll(cluster_type.get(j_max));
+				cluster_type.remove(j_max);
+				
+				int[] x=new int[cluster_type_sum.get(i_max).length];
+				for (int j=0;j<cluster_type_sum.get(i_max).length;j++){
+					x[j]=cluster_type_sum.get(i_max)[j]+cluster_type_sum.get(j_max)[j];
+				}
+				cluster_type_sum.set(i_max, x);
+				cluster_type_sum.remove(j_max);
+				
 				for (int i=0;i<dist_type.size();i++){
 					if(i==i_max){
 						dist_type.get(i).set(i_max,0.0);
 						dist_type.get(i_max).set(i,0.0);
 					}
 					else{
-						dist_type.get(i).set(i_max,distance_type(cluster_type.get(i),combi_cluster));
-						dist_type.get(i_max).set(i,distance_type(cluster_type.get(i),combi_cluster));
+						double d=distance_type(cluster_type_sum.get(i),cluster_type_sum.get(i_max));
+						dist_type.get(i).set(i_max,d);
+						dist_type.get(i_max).set(i,d);
 					}
-					
 				}
-				dist_type.remove(j_max);
-				for (int i=0;i<dist_type.size();i++){
-					dist_type.get(i).remove(j_max);
-				}
-				
-				cluster_type.get(i_max).addAll(cluster_type.get(j_max));
-				cluster_type.remove(j_max);
 				
 				entities_type.get(i_max).addAll(entities_type.get(j_max));
 				entities_type.remove(j_max);
@@ -386,12 +422,44 @@ public class ClusteringPanCancer {
 					break;
 				}
 				
-				ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
-				combi_cluster.addAll(cluster_context.get(i_max));
-				combi_cluster.addAll(cluster_context.get(j_max));
+				//ArrayList<Integer> combi_cluster=new ArrayList<Integer>();
+				//combi_cluster.addAll(cluster_context.get(i_max));
+				//combi_cluster.addAll(cluster_context.get(j_max));
 				
+				//distance_context(combi_cluster);
 				
-				distance_context(combi_cluster);
+				cluster_context.get(i_max).addAll(cluster_context.get(j_max));
+				cluster_context.remove(j_max);
+				int[][][] x=new int[cluster_context_sum.get(i_max).length][cluster_context_sum.get(i_max)[0].length][cluster_context_sum.get(i_max)[0][0].length];
+				for (int j1=0;j1<cluster_context_sum.get(i_max).length;j1++){
+					for (int j2=0;j2<cluster_context_sum.get(i_max)[j1].length;j2++){
+						for (int j3=0;j3<cluster_context_sum.get(i_max)[j1][j2].length;j3++){
+							x[j1][j2][j3]=cluster_context_sum.get(i_max)[j1][j2][j3]+cluster_context_sum.get(j_max)[j1][j2][j3];
+						}
+					}
+				}
+				cluster_context_sum.set(i_max, x);
+				cluster_context_sum.remove(j_max);
+				dist_context.remove(j_max);
+				for (int i=0;i<dist_context.size();i++){
+					dist_context.get(i).remove(j_max);
+				}
+				
+				for (int i=0;i<dist_context.size();i++){
+					if(i==i_max){
+						dist_context.get(i).set(i_max,0.0);
+						dist_context.get(i_max).set(i,0.0);
+					}
+					else{
+						double d=distance_context(cluster_context_sum.get(i),cluster_context_sum.get(i_max));
+						dist_context.get(i).set(i_max,d);
+						dist_context.get(i_max).set(i,d);
+						//dist_type.get(i).set(i_max,distance_type(cluster_type.get(i),combi_cluster));
+						//dist_type.get(i_max).set(i,distance_type(cluster_type.get(i),combi_cluster));
+					}
+				}
+				
+				/*
 				for (int i=0;i<dist_context.size();i++){
 					if(i==i_max){
 						dist_context.get(i).set(i_max,0.0);
@@ -403,13 +471,7 @@ public class ClusteringPanCancer {
 					}
 					
 				}
-				dist_context.remove(j_max);
-				for (int i=0;i<dist_context.size();i++){
-					dist_context.get(i).remove(j_max);
-				}
-				
-				cluster_context.get(i_max).addAll(cluster_context.get(j_max));
-				cluster_context.remove(j_max);
+				*/
 				
 				entities_context.get(i_max).addAll(entities_context.get(j_max));
 				entities_context.remove(j_max);
@@ -603,6 +665,8 @@ public class ClusteringPanCancer {
 	}
 	
 	//equally distribute the computational load to update the distance matrix on 30 CPUs
+	
+	/*
 	static void distance_context(ArrayList<Integer> combi_cluster){
 		//int n_processor=30;
 		vector_context=new double[cluster_context.size()];
@@ -633,8 +697,9 @@ public class ClusteringPanCancer {
 		catch(Exception e){
 			System.out.println(e);
 		}
-	}
+	}*/
 	
+	/*
 	private static class Subthread_Context extends Thread{
 		int c_start=-1;
 		int c_end=-1;
@@ -647,7 +712,7 @@ public class ClusteringPanCancer {
 			}
 			done=true;
 		}
-	}
+	}*/
 	
 	public static int index(int a , ArrayList<ArrayList<Integer>> c){
 		for (int i=0;i<c.size();i++){
@@ -705,8 +770,9 @@ public class ClusteringPanCancer {
 		return -1;
 	}
 	
-
+/*
 	public static void initialize(){
+		
 		Subthread[] threads=new Subthread[cluster_type.size()];
 		for (int i=0;i<threads.length;i++){
 			threads[i]=new Subthread();
@@ -755,7 +821,7 @@ public class ClusteringPanCancer {
 			System.out.println(e);
 		}
 		
-	}
+	}*/
 	
 	public static boolean contains(String s, ArrayList<String> t){
 		for (int i=0;i<t.size();i++){
@@ -767,23 +833,42 @@ public class ClusteringPanCancer {
 	}
 	
 	//thread responsible to calculate 1 row of the distance matrices, used in parallelization step 
-	private static class Subthread extends Thread{
-		int c=-1;
-		volatile boolean done=false;
-		
-		public void run(){
+	
+	
+	public static double[][] initialize_type(ArrayList<int[]> cluster_type){
+		double[][] distance_type=new double[cluster_type.size()][cluster_type.size()];
+		for (int c=0;c<cluster_type.size();c++){
 			for (int i=0;i<distance_type[c].length;i++){
 				if(i==c){
 					distance_type[c][i]=0;
-					distance_context[c][i]=0;
+				}
+				else if(c<i){
+					distance_type[c][i]=distance_type(cluster_type.get(c),cluster_type.get(i));
 				}
 				else{
-					distance_type[c][i]=distance_type(cluster_type.get(c),cluster_type.get(i));
-					distance_context[c][i]=distance_context(cluster_context.get(c),cluster_context.get(i));
+					distance_type[c][i]=distance_type[i][c];
 				}
 			}
-			done=true;
 		}
+		return distance_type;
+	}
+	
+	public static double[][] initialize_context(ArrayList<int[][][]> cluster_context){
+		double[][] distance_context=new double[cluster_context.size()][cluster_context.size()];
+		for (int c=0;c<cluster_context.size();c++){
+			for (int i=0;i<distance_context[c].length;i++){
+				if(i==c){
+					distance_context[c][i]=0;
+				}
+				else if(c<i){
+					distance_context[c][i]=distance_context(cluster_context.get(c),cluster_context.get(i));
+				}
+				else{
+					distance_context[c][i]=distance_context[i][c];
+				}
+			}
+		}
+		return distance_context;
 	}
 	
 	public static int[] sum(ArrayList<int[]> type, ArrayList<Integer> cluster){
@@ -810,12 +895,13 @@ public class ClusteringPanCancer {
 		return sum;
 	}
 	
+	/*
 	public static double distance_type(ArrayList<Integer> cluster1, ArrayList<Integer> cluster2){
 		return distance_type(sum(type,cluster1), sum(type,cluster2));
 	}
 	public static double distance_context(ArrayList<Integer> cluster1, ArrayList<Integer> cluster2){
 		return distance_context(sum2(affinity,cluster1), sum2(affinity,cluster2));
-	}
+	}*/
 	
 	public static double distance_type(int[] vv, int[] ww){
 		
