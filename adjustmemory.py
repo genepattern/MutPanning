@@ -7,13 +7,22 @@
 import sys
 val = sys.argv[1]
 val = val.replace(" ","")
-valInt = int(val) -1
-val = str(valInt)
+try:
+    valInt = int(val) -1
+    val = str(valInt)
+    # unit could be G or Gb, strip the b if present
+    unit=sys.argv[2]
+    if len(unit) > 1:
+        unit = unit[:-1]
 
-# unit could be G or Gb, strip the b if present
-unit=sys.argv[2]
-if len(unit) > 1:
-    unit = unit[:-1]
+    print(val+unit)
 
-print(val+unit)
+except:
+    # probably came in as '16G' or '16Gb' without a space
+    # just need to strip the 'b' if it ends with one
+    if (val[-1].lower() == 'b'):
+        print(val[:-1])
+    else:
+        print(val)
+
 
