@@ -1,39 +1,41 @@
 #Fri, 22 Jun 2018 09:09:40 -0700
 # MutPanning
 JVMLevel=
-LSID=urn\:lsid\:broad.mit.edu\:cancer.software.genepattern.module.analysis\:00380\:0.71
+LSID=urn\:lsid\:broad.mit.edu\:cancer.software.genepattern.module.analysis\:00380\:0.7.1
 author=Ted Liefeld, UCSD School of Medicine.
 categories=Tutorial
 
-commandLine=/mutpanning/run-mutpanning-module.sh <job.memory> /mutpanning_temp <maf.file>  <sample.annotation.file>  /mutpanning_hg19/Hg19/  <min.samples.per.cluster>  <min.mutations.per.cluster>  <min.cbase.samples> <min.cbase.mutations>
+commandLine=/mutpanning/run-mutpanning-module.sh <job.memory> /mutpanning_temp <mutation.file>  <sample.annotation.file>  /mutpanning_hg19/Hg19/  <min.samples.per.cluster>  <min.mutations.per.cluster>  <min.samples.Bayesian.model> <min.mutations.Bayesian.model>
 
 cpuType=any
 job.memory=10G
 
-description=MutPanning description goes here
+description=MutPanning identifies driver genes based on their abundance of nonsynonymous mutations and their increased number of mutations in unusual nucleotide contexts that deviate from the background mutational process. 
 fileFormat=maf
 language=any
 minGenePatternVersion=3.9.13
 name=MutPanning
 os=any
-job.docker.image=genepattern/docker-mutpanning:jtl
+job.docker.image=genepattern/docker-mutpanning:v0.9
 p1_MODE=IN
 p1_TYPE=FILE
 p1_default_value=
-p1_description=A MAF file containing the mutation profiles
+p1_description=The <b>mutation file</b>  should be a tab-delimited standard *.maf format and contain the following columns: <b>Hugo_Symbol</b> (gene name), <b>Chromosome</b>, <b>Start_Position</b> (according to Hg19), <b>End_Position</b> (according to Hg19), <b>Strand</b> (1 or -1), <b>Variant_Classification</b> (e.g. Missense_Mutation, Nonsense_Mutation, In_Frame_Del, Silent, etc.), <b>Variant_Type</b> (e.g. SNP, DEL, INS, etc.), <b>Reference_Allele</b> (reference nucleotide in Hg19), <b>Tumor_Seq_Allele1</b> (allele A in tumor), <b>Tumor_Seq_Allele2</b> (allele B in tumor), <b>Tumor_Sample_Barcode</b>.
+Names in column <b>Tumor_Sample_Barcode</b> should exactly match the names in the sample file (case-sensitive). If you are unsure about the file format, you can download an example <a href=\"http://storage.googleapis.com/mutpanning_hg19/MutationsSkin.maf\">here</a>. Make sure that <b>Variant_Classification</b> and <b>Variant_Type</b> are annotated by exactly the same terms/names as in the exemplary mutation file (case-sensitive, hyphenation, underscores, etc.)
 p1_fileFormat=maf
 p1_flag=
-p1_name=maf.file
+p1_name=mutation.file
 p1_numValues=1..1
 p1_optional=
 p1_prefix=
 p1_prefix_when_specified=
 p1_type=java.io.File
 p1_value=
+
 p2_MODE=IN
 p2_TYPE=FILE
 p2_default_value=
-p2_description=A TXT file containing the sample annotations for the mutation profiles
+p2_description=The <b>sample annotation file</b> should be a tab-delimited *.txt file that contains at least two columns labeled <b>Sample</b> and <b>Cohort</b>. The Sample column contains unique sample name for each sample in the maf file. No duplicates allowed, all samples in the mutation file must be listed in the sample file. The cohort column contains the subcohort (e.g. cancer type) to which the sample belongs (case-sensitive). If you are unsure about the file format, you can download an exemplary sample file <a href=\"http://storage.googleapis.com/mutpanning_hg19/SamplesSkin.txt\">here</a>
 p2_fileFormat=txt
 p2_flag=
 p2_name=sample.annotation.file
@@ -47,7 +49,7 @@ p2_value=
 p3_MODE=
 p3_TYPE=TEXT
 p3_default_value=3
-p3_description=Minimum number of samples per cluster
+p3_description=Minimum number of samples needed per nucleotide context cluster. Unless you are familiar with the MutPanning algorithm, we recommend running MutPanning with standard parameters (default value 3).
 p3_fileFormat=
 p3_flag=
 p3_name=min.samples.per.cluster
@@ -61,7 +63,7 @@ p3_value=
 p4_MODE=
 p4_TYPE=TEXT
 p4_default_value=1000
-p4_description=Minimum number of mutations per cluster
+p4_description=Minimum number of mutations needed per nucleotide context cluster. Unless you are familiar with the MutPanning algorithm, we recommend running MutPanning with standard parameters (default value 1000).
 p4_fileFormat=
 p4_flag=
 p4_name=min.mutations.per.cluster
@@ -75,10 +77,10 @@ p4_value=
 p5_MODE=
 p5_TYPE=TEXT
 p5_default_value=100
-p5_description=The minimum number of samples for CBASE.
+p5_description=Minimum number of samples needed to calibrate the Bayesian background model. Unless you are familiar with the MutPanning algorithm, we recommend running MutPanning with standard parameters (default value 100).
 p5_fileFormat=
 p5_flag=
-p5_name=min.cbase.samples
+p5_name=min.samples.Bayesian.model
 p5_numValues=1..1
 p5_optional=
 p5_prefix=
@@ -89,11 +91,11 @@ p5_value=
 
 p6_MODE=
 p6_TYPE=TEXT
-p6_default_value=1
-p6_description=Minumum number of mutations for CBASE
+p6_default_value=5000
+p6_description=Minimum number of mutations needed to calibrate the Bayesian background model. Unless you are familiar with the MutPanning algorithm, we recommend running MutPanning with standard parameters (default value 5000).
 p6_fileFormat=
 p6_flag=
-p6_name=min.cbase.mutations
+p6_name=min.mutations.Bayesian.model
 p6_numValues=1..1
 p6_optional=
 p6_prefix=

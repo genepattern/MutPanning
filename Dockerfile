@@ -17,12 +17,11 @@ RUN javac -cp bin/commons-math3-3.6.1.jar:bin/jdistlib-0.4.5-bin.jar src/Affinit
 
 RUN mkdir /mutpanning_temp
 RUN mkdir /mutpanning_hg19 && \
-    mv /mutpanning/Hg19.zip /mutpanning_hg19 && \
     cd /mutpanning_hg19 && \
+    wget https://datasets.genepattern.org/data/module_support_files/MutPanning/Hg19.zip && \
     unzip Hg19.zip
 
 RUN apt-get clean && \
     apt-get install -y python 
 
-#CMD ["bash /mutpanning/launch-mutpanning.sh"]
 
