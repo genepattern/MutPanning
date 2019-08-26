@@ -1,3 +1,5 @@
+#updated after building 0.10
+#Mon, 26 Aug 2019 10:00:55 -0400
 #updated after building 0.9
 #Fri, 23 Aug 2019 11:00:52 -0400
 #updated after building 0.8
@@ -14,4 +16,4 @@
 #Wed, 15 Aug 2018 12:51:00 -0400
 #updated after building 0.1
 #Fri, 10 Aug 2018 14:23:17 -0400
-prerelease.number=10
+prerelease.number=11
