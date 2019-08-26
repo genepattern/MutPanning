@@ -1,4 +1,4 @@
-Copyright 2019 The Broad Institute of MIT and Harvard, and the Regents of the University of California
+Copyright 2019 The Broad Institute of MIT and Harvard
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
