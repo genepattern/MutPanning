@@ -15,14 +15,14 @@ diffDir2=`mktemp -d $bare2.XXXXXX`
 tar -xf $zip1 -C $diffDir1
 tar -xf $zip2 -C $diffDir2
 
-# the files won't be identical but the top genes should be
-cut -f1 $diffDir1/SignificanceSkin.txt | head -5 > $diffDir1/topgenes.txt
-cut -f1 $diffDir2/SignificanceSkin.txt | head -5 > $diffDir2/topgenes.txt
+# the files won't be identical but the top gene should be
+cut -f1 $diffDir1/SignificanceSkin.txt | head -2 > $diffDir1/topgenes.txt
+cut -f1 $diffDir2/SignificanceSkin.txt | head -2 > $diffDir2/topgenes.txt
 
 # Diff only selected files out of the ZIP
 diff --strip-trailing-cr -q $diffDir1/topgenes.txt $diffDir2/topgenes.txt
 status=$?
 
 
-#rm -rf $diffDir1 $diffDir2
+rm -rf $diffDir1 $diffDir2
 exit $status

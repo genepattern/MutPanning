@@ -8,8 +8,8 @@ params:
     "sample.annotation.file": http://storage.googleapis.com/mutpanning_hg19/SamplesSkin.txt
 assertions:
     jobStatus: success
-        files:
-            "Results.tar.gz":
-                diffCmd: ./diffMutPanningResults.sh
-                diff: ./sample_results/Results.tar.gz 
+    files:
+        "Results.tar.gz":
+            diffCmd: ./diffMutPanningResults.sh
+            diff: "./sample_results/Results.tar.gz" 
 
