@@ -1,0 +1,15 @@
+#
+# ant -f ${GPUNIT_HOME}/build.xml -Dgpunit.diffStripTrailingCR="--strip-trailing-cr" -Dgp.host="beta.genepattern.org" -Dgp.url="https://beta.genepattern.org" -Dgp.user="ted-dev" -Dgp.password="" -Dgpunit.testfolder=`pwd` gpunit
+#
+name: MutPanningExample
+module: MutPanning 
+params: 
+    "mutation.file":  http://storage.googleapis.com/mutpanning_hg19/MutationsSkin.maf
+    "sample.annotation.file": http://storage.googleapis.com/mutpanning_hg19/SamplesSkin.txt
+assertions:
+    jobStatus: success
+        files:
+            "Results.tar.gz":
+                diffCmd: ./diffMutPanningResults.sh
+                diff: ./sample_results/Results.tar.gz 
+
