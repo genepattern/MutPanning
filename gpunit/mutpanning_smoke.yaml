@@ -5,7 +5,7 @@ params:
     "sample.annotation.file": http://storage.googleapis.com/mutpanning_hg19/SamplesSkin.txt
 assertions:
     jobStatus: success
-    numFiles: 1
+    numFiles: 2
     files:
         "Results.tar.gz": !!null
         "stdout.txt": !!null
