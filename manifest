@@ -3,7 +3,7 @@
 JVMLevel=
 LSID=urn\:lsid\:broad.mit.edu\:cancer.software.genepattern.module.analysis\:00380\:2
 author=Ted Liefeld, UCSD School of Medicine.
-categories=Tutorial
+categories=Mutational Significance Analysis
 
 commandLine=/mutpanning/run-mutpanning-module.sh <job.memory> /mutpanning_temp <mutation.file>  <sample.annotation.file>  /mutpanning_hg19/Hg19/  <min.samples.per.cluster>  <min.mutations.per.cluster>  <min.samples.Bayesian.model> <min.mutations.Bayesian.model>
 
@@ -108,6 +108,6 @@ quality=production
 requiredPatchLSIDs=
 requiredPatchURLs=
 taskDoc=doc.html
-taskType=Tutorial
+taskType=Mutational Significance Analysis
 userid=ted
 version=Initial Release
